@@ -11,6 +11,7 @@ import CredentialsContext from "@/context/CredentialsContext";
 import { CachedUser } from "@/services/LocalStorageKeystore";
 import SyncPopup from "@/components/Popups/SyncPopup";
 import { useSessionStorage } from "@/hooks/useStorage";
+import { OPENID4VCI_EID_CLIENT_URL } from "@/config";
 
 const MessagePopup = React.lazy(() => import('../components/Popups/MessagePopup'));
 const PinInputPopup = React.lazy(() => import('../components/Popups/PinInput'));
@@ -133,7 +134,30 @@ export const UriHandler = ({ children }) => {
 					console.log("Generating authorization request...");
 					return generateAuthorizationRequest(credentialIssuer, selectedCredentialConfigurationId, issuer_state);
 				}).then((res) => {
-					if ('url' in res && res.url) {
+					const request_uri = new URL(res.url).searchParams.get('request_uri');
+					const client_id = new URL(res.url).searchParams.get('client_id');
+
+					if (client_id === "fed79862-af36-4fee-8e64-89e3c91091ed") {
+						const isMobile = window.innerWidth <= 480;
+						const eIDClientURL = isMobile ? OPENID4VCI_EID_CLIENT_URL.replace('http', 'eid') : OPENID4VCI_EID_CLIENT_URL;
+						console.log("Eid client url = ", eIDClientURL)
+						const urlObj = new URL(res.url);
+						// Construct the base URL
+						const baseUrl = `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+
+						// Parameters
+						// Encode parameters
+						const encodedClientId = encodeURIComponent(client_id);
+
+						const encodedRequestUri = encodeURIComponent(request_uri);
+						const tcTokenURL = `${baseUrl}?client_id=${encodedClientId}&request_uri=${encodedRequestUri}`;
+
+						console.log("TC token url = ", new URL(tcTokenURL).searchParams.get('request_uri'))
+						const newLoc = `${eIDClientURL}?tcTokenURL=${encodeURIComponent(tcTokenURL)}`
+						console.log("New loc = ", newLoc);
+						window.location.href = newLoc;
+					}
+					else if ('url' in res && res.url) {
 						window.location.href = res.url;
 					}
 				})
