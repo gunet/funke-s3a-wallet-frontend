@@ -12,6 +12,7 @@ import OpenID4VCIContext from '@/context/OpenID4VCIContext';
 import CredentialsContext from '@/context/CredentialsContext';
 import useFilterItemByLang from '@/hooks/useFilterItemByLang';
 import { buildCredentialConfiguration } from '@/components/QueryableList/CredentialsDisplayUtils';
+import { OPENID4VCI_EID_CLIENT_URL } from '@/config';
 
 const AddCredentials = () => {
 	const { isOnline } = useContext(StatusContext);
@@ -182,7 +183,29 @@ const AddCredentials = () => {
 				return;
 			}
 			openID4VCI.generateAuthorizationRequest(credentialIssuerIdentifier, credentialConfigurationId).then((result) => {
-				if ('url' in result) {
+				const request_uri = new URL(result.url).searchParams.get('request_uri');
+				const client_id = new URL(result.url).searchParams.get('client_id');
+				if (client_id === "fed79862-af36-4fee-8e64-89e3c91091ed") {
+					const isMobile = window.innerWidth <= 480;
+					const eIDClientURL = isMobile ? OPENID4VCI_EID_CLIENT_URL.replace('http', 'eid') : OPENID4VCI_EID_CLIENT_URL;
+					console.log("Eid client url = ", eIDClientURL)
+					const urlObj = new URL(result.url);
+					// Construct the base URL
+					const baseUrl = `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+
+					// Parameters
+					// Encode parameters
+					const encodedClientId = encodeURIComponent(client_id);
+
+					const encodedRequestUri = encodeURIComponent(request_uri);
+					const tcTokenURL = `${baseUrl}?client_id=${encodedClientId}&request_uri=${encodedRequestUri}`;
+
+					console.log("TC token url = ", new URL(tcTokenURL).searchParams.get('request_uri'))
+					const newLoc = `${eIDClientURL}?tcTokenURL=${encodeURIComponent(tcTokenURL)}`
+					console.log("New loc = ", newLoc);
+					window.location.href = newLoc;
+				}
+				else if ('url' in result) {
 					const { url } = result;
 					window.location.href = url;
 				}
