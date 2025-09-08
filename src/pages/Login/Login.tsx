@@ -204,7 +204,6 @@ const WebauthnSignupLogin = ({
 	isSubmitting,
 	setIsSubmitting,
 	isLoginCache,
-	setIsLoginCache,
 	error,
 	setError,
 }: {
@@ -212,7 +211,6 @@ const WebauthnSignupLogin = ({
 	isSubmitting: boolean,
 	setIsSubmitting: (isSubmitting: boolean) => void,
 	isLoginCache: boolean,
-	setIsLoginCache: (isLoginCache: boolean) => void,
 	error: React.ReactNode,
 	setError: (error: React.ReactNode) => void,
 }) => {
@@ -376,7 +374,6 @@ const WebauthnSignupLogin = ({
 	};
 
 	const onForgetCachedUser = (cachedUser: CachedUser) => {
-		setIsLoginCache(keystore.getCachedUsers().length - 1 > 0);
 		keystore.forgetCachedUser(cachedUser);
 	};
 
@@ -631,7 +628,13 @@ const Auth = () => {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const navigate = useNavigate();
-	const [isLoginCache, setIsLoginCache] = useState(keystore.getCachedUsers().length > 0);
+
+	const { getCachedUsers } = keystore;
+	const [isLoginCache, setIsLoginCache] = useState(getCachedUsers().length > 0);
+
+	useEffect(() => {
+		setIsLoginCache(getCachedUsers().length > 0);
+	}, [getCachedUsers, setIsLoginCache]);
 
 	useEffect(() => {
 		if (isLoggedIn) {
@@ -722,7 +725,7 @@ const Auth = () => {
 				}}
 			/>
 		}>
-			<div className="relative p-8 px-12 space-y-4 md:space-y-6 lg:space-y-8 bg-white rounded-lg shadow dark:bg-gray-800">
+			<div className="relative p-8 sm:px-12 space-y-4 md:space-y-6 lg:space-y-8 bg-white rounded-lg shadow dark:bg-gray-800">
 				<h1 className="pt-4 text-xl font-bold leading-tight tracking-tight text-gray-900 md:text-2xl text-center dark:text-white">
 					{isLoginCache ? t('loginSignup.loginCache') : isLogin ? t('loginSignup.loginTitle') : t('loginSignup.signUp')}
 				</h1>
@@ -763,7 +766,6 @@ const Auth = () => {
 					isSubmitting={isSubmitting}
 					setIsSubmitting={setIsSubmitting}
 					isLoginCache={isLoginCache}
-					setIsLoginCache={setIsLoginCache}
 					error={webauthnError}
 					setError={setWebauthnError}
 				/>
