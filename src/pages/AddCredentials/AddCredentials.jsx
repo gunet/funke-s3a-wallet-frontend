@@ -12,6 +12,7 @@ import OpenID4VCIContext from '@/context/OpenID4VCIContext';
 import CredentialsContext from '@/context/CredentialsContext';
 import useFilterItemByLang from '@/hooks/useFilterItemByLang';
 import { buildCredentialConfiguration } from '@/components/QueryableList/CredentialsDisplayUtils';
+import { OPENID4VCI_EID_CLIENT_URL } from '@/config';
 
 const AddCredentials = () => {
 	const { isOnline } = useContext(StatusContext);
@@ -30,6 +31,22 @@ const AddCredentials = () => {
 
 	const { t } = useTranslation();
 	const filterItemByLang = useFilterItemByLang();
+	const [cachedUser, setCachedUser] = useState(null);
+
+	useEffect(() => {
+		if (!keystore) {
+			return;
+		}
+
+		const userHandle = keystore.getUserHandleB64u();
+		if (!userHandle) {
+			return;
+		}
+		const u = keystore.getCachedUsers().filter((user) => user.userHandleB64u === userHandle)[0];
+		if (u) {
+			setCachedUser(u);
+		}
+	}, [keystore, setCachedUser]);
 
 	useEffect(() => {
 		if (vcEntityList === null) {
@@ -137,6 +154,10 @@ const AddCredentials = () => {
 	}, [api, isOnline, openID4VCIHelper, openID4VCI, filterItemByLang]);
 
 	const handleCredentialConfigurationClick = async (credentialConfigurationIdWithCredentialIssuerIdentifier) => {
+		const result = await api.syncPrivateData(cachedUser);
+		if (!result.ok) {
+			return {};
+		}
 		const [credentialConfigurationId, credentialIssuerIdentifier] = JSON.parse(credentialConfigurationIdWithCredentialIssuerIdentifier);
 		const clickedCredentialConfiguration = credentialConfigurations.find((conf) => conf.credentialConfigurationId === credentialConfigurationId && conf.credentialIssuerIdentifier === credentialIssuerIdentifier);
 		if (clickedCredentialConfiguration) {
@@ -162,7 +183,29 @@ const AddCredentials = () => {
 				return;
 			}
 			openID4VCI.generateAuthorizationRequest(credentialIssuerIdentifier, credentialConfigurationId).then((result) => {
-				if ('url' in result) {
+				const request_uri = new URL(result.url).searchParams.get('request_uri');
+				const client_id = new URL(result.url).searchParams.get('client_id');
+				if (client_id === "fed79862-af36-4fee-8e64-89e3c91091ed") {
+					const isMobile = window.innerWidth <= 480;
+					const eIDClientURL = isMobile ? OPENID4VCI_EID_CLIENT_URL.replace('http', 'eid') : OPENID4VCI_EID_CLIENT_URL;
+					console.log("Eid client url = ", eIDClientURL)
+					const urlObj = new URL(result.url);
+					// Construct the base URL
+					const baseUrl = `${urlObj.protocol}//${urlObj.hostname}${urlObj.pathname}`;
+
+					// Parameters
+					// Encode parameters
+					const encodedClientId = encodeURIComponent(client_id);
+
+					const encodedRequestUri = encodeURIComponent(request_uri);
+					const tcTokenURL = `${baseUrl}?client_id=${encodedClientId}&request_uri=${encodedRequestUri}`;
+
+					console.log("TC token url = ", new URL(tcTokenURL).searchParams.get('request_uri'))
+					const newLoc = `${eIDClientURL}?tcTokenURL=${encodeURIComponent(tcTokenURL)}`
+					console.log("New loc = ", newLoc);
+					window.location.href = newLoc;
+				}
+				else if ('url' in result) {
 					const { url } = result;
 					window.location.href = url;
 				}
@@ -178,7 +221,7 @@ const AddCredentials = () => {
 
 	return (
 		<>
-			<div className="sm:px-6 w-full">
+			<div className="px-6 sm:px-12 w-full">
 				<H1 heading={t('common.navItemAddCredentials')} />
 				<PageDescription description={t('pageAddCredentials.description')} />
 

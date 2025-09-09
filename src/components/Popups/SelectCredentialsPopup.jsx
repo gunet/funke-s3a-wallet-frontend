@@ -364,6 +364,12 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 									</p>
 								);
 							})()}
+
+							{popupState?.options?.parsedTransactionData && popupState?.options?.parsedTransactionData.map((txData) => {
+								const TxComp = txData.ui;
+								return (<TxComp />)
+							})}
+
 							<div>
 								<p className="text-primary dark:text-white text-sm font-bold">
 									{t('selectCredentialPopup.requestedCredentialsFieldsTitle')}
@@ -527,6 +533,11 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 								components={{ strong: <strong /> }}
 							/>
 						</p>
+
+						{popupState?.options?.parsedTransactionData && popupState?.options?.parsedTransactionData.map((txData) => {
+							const TxComp = txData.ui;
+							return <TxComp />
+						})}
 
 						<div className={`xm:px-4 px-16 sm:px-24 md:px-8 ${screenType === 'desktop' && 'max-w-[600px]'}`}>
 							<Slider

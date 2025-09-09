@@ -145,7 +145,9 @@ export function useLocalStorageKeystore(eventTarget: EventTarget): LocalStorageK
 			objectStore.createIndex("id", "id", { unique: true });
 		}
 		if (prevVersion < 2) {
-			db.deleteObjectStore("keys");
+			if (db.objectStoreNames.contains("keys")) {
+				db.deleteObjectStore("keys");
+			}
 		}
 
 		if (prevVersion < 3) {
@@ -439,7 +441,7 @@ export function useLocalStorageKeystore(eventTarget: EventTarget): LocalStorageK
 
 	const getCachedUsers = useCallback((): CachedUser[] => {
 		return [...(cachedUsers || [])];
-	}, []);
+	}, [cachedUsers]);
 
 	const forgetCachedUser = useCallback((user: CachedUser): void => {
 		setCachedUsers((cachedUsers) => cachedUsers.filter((cu) => cu.userHandleB64u !== user.userHandleB64u));
