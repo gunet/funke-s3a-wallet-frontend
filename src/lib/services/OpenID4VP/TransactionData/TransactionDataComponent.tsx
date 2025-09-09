@@ -20,7 +20,7 @@ export const withTransactionData = (req: TransactionDataRequest) => {
 		}
 		else if (req.type === 'qes_authorization') {
 			return (
-				<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2">
+				<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2 mb-2">
 					<span className="text-primary text-sm font-bold dark:text-white block mb-1">
 						{t('selectCredentialPopup.signedDocuments')}
 					</span>
