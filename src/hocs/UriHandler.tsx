@@ -171,10 +171,10 @@ export const UriHandler = ({ children }) => {
 						}
 						return;
 					}
-					const { conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, presentationDefinition, dcqlQuery } = result;
+					const { conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfoJwt, presentationDefinition, dcqlQuery } = result;
 					const jsonedMap = Object.fromEntries(conformantCredentialsMap);
 					console.log("Prompting for selection..")
-					return openID4VP.promptForCredentialSelection(jsonedMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, presentationDefinition, dcqlQuery);
+					return openID4VP.promptForCredentialSelection(jsonedMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfoJwt, presentationDefinition, dcqlQuery);
 				}).then((selection) => {
 					if (!(selection instanceof Map)) {
 						return;

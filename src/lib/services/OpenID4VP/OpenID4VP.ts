@@ -24,7 +24,7 @@ import { ExtendedVcEntity } from "@/context/CredentialsContext";
 import { getLeastUsedCredentialInstance } from "../CredentialBatchHelper";
 import { WalletStateUtils } from "@/services/WalletStateUtils";
 
-export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, showTransactionDataConsentPopup }: { showCredentialSelectionPopup: (conformantCredentialsMap: any, verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, presentationDefinition: any, dcqlQuery: any) => Promise<Map<string, number>>, showStatusPopup: (message: { title: string, description: string }, type: 'error' | 'success') => Promise<void>, showTransactionDataConsentPopup: (options: Record<string, unknown>) => Promise<boolean> }): IOpenID4VP {
+export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, showTransactionDataConsentPopup }: { showCredentialSelectionPopup: (conformantCredentialsMap: any, verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, verifierInfoJwt: string | null, presentationDefinition: any, dcqlQuery: any) => Promise<Map<string, number>>, showStatusPopup: (message: { title: string, description: string }, type: 'error' | 'success') => Promise<void>, showTransactionDataConsentPopup: (options: Record<string, unknown>) => Promise<boolean> }): IOpenID4VP {
 
 	const openID4VPRelyingPartyStateRepository = useOpenID4VPRelyingPartyStateRepository();
 	const httpProxy = useHttpProxy();
@@ -71,8 +71,8 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 
 
 	const promptForCredentialSelection = useCallback(
-		async (conformantCredentialsMap: any, verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, presentationDefinition: any, dcqlQuery: any): Promise<Map<string, number>> => {
-			return showCredentialSelectionPopup(conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, presentationDefinition, dcqlQuery);
+		async (conformantCredentialsMap: any, verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, verifierInfoJwt: string | null, presentationDefinition: any, dcqlQuery: any): Promise<Map<string, number>> => {
+			return showCredentialSelectionPopup(conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfoJwt, presentationDefinition, dcqlQuery);
 		},
 		[showCredentialSelectionPopup]
 	);
@@ -788,7 +788,7 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 	}
 
 
-	const handleAuthorizationRequest = useCallback(async (url: string, vcEntityList: ExtendedVcEntity[]): Promise<{ conformantCredentialsMap: Map<string, any>; verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, presentationDefinition: any, dcqlQuery: any } | { error: HandleAuthorizationRequestError }> => {
+	const handleAuthorizationRequest = useCallback(async (url: string, vcEntityList: ExtendedVcEntity[]): Promise<{ conformantCredentialsMap: Map<string, any>; verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, verifierInfoJwt: string | null, presentationDefinition: any, dcqlQuery: any } | { error: HandleAuthorizationRequestError }> => {
 		let {
 			client_id,
 			response_uri,
@@ -813,6 +813,7 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 		}
 
 		let verifierAttestationsJwt: string | null = null;
+		let verifierInfoJwt: string | null = null;
 
 		if (request_uri) {
 			try {
@@ -853,6 +854,12 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 					const jwtAtt = payload.verifier_attestations.find(att => att.format === "jwt");
 					if (jwtAtt?.data) {
 						verifierAttestationsJwt = jwtAtt.data;
+					}
+				}
+				if (payload.verifier_info) {
+					const jwtAtt = payload.verifier_info.find(att => att.format === "jwt");
+					if (jwtAtt?.data) {
+						verifierInfoJwt = jwtAtt.data;
 					}
 				}
 			} catch (e) {
@@ -916,6 +923,7 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 			verifierDomainName,
 			verifierPurpose: descriptorPurpose,
 			verifierAttestationsJwt: verifierAttestationsJwt,
+			verifierInfoJwt: verifierInfoJwt,
 			presentationDefinition: presentation_definition,
 			dcqlQuery: dcql_query
 		};
