@@ -13,6 +13,9 @@ import { truncateByWords } from '@/functions/truncateWords';
 import { MdFactCheck } from "react-icons/md";
 import { useCredentialName } from '@/hooks/useCredentialName';
 import i18n from '@/i18n';
+import { verifyAttestationWithRegistrar } from '@/lib/services/VerifierRegistrar/VerifyAttestation';
+import { checkVerifierViolations } from '@/lib/services/VerifierRegistrar/CheckVerifierViolations';
+import { VscWorkspaceUnknown, VscWorkspaceTrusted, VscWorkspaceUntrusted } from "react-icons/vsc";
 
 const SelectableCredentialSlideCard = ({
 	vcEntity,
@@ -169,6 +172,26 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 	const screenType = useScreenType();
 	const [currentSlide, setCurrentSlide] = useState(1);
 	const [currentSummarySlide, setCurrentSummarySlide] = useState(0);
+	const [trustViolations, setTrustViolations] = useState([]);
+	const [trustCheckStatus, setTrustCheckStatus] = useState('idle');
+
+	const runTrustCheck = async () => {
+		if (!popupState?.options?.verifierAttestationsJwt) return;
+		setTrustCheckStatus('checking');
+		try {
+			const verified = await verifyAttestationWithRegistrar(popupState.options.verifierAttestationsJwt);
+			const violations = checkVerifierViolations(
+				verified,
+				popupState.options.presentationDefinition,
+				popupState.options.dcqlQuery
+			);
+			setTrustViolations(violations);
+		} catch (err) {
+			console.error("Trust check failed:", err);
+			setTrustViolations([{ type: 'error', message: t('selectCredentialPopup.trustCheckError') }]);
+		}
+		setTrustCheckStatus('done');
+	};
 
 	const requestedFieldsPerCredential = useMemo(() => {
 
@@ -303,9 +326,6 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 				{/* Preview step */}
 				{keys[currentIndex] === 'preview' && (
 					<>
-						<p className="text-gray-700 italic dark:text-white text-sm mt-3 mb-2">
-							{t('selectCredentialPopup.previewDescription')}
-						</p>
 						<div className="flex flex-col gap-2">
 
 							{popupState.options.verifierDomainName && (
@@ -384,6 +404,74 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 									);
 								})}
 							</div>
+							{popupState.options.verifierAttestationsJwt && (
+								<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2">
+									<span className="text-primary text-sm font-bold dark:text-white block mb-1">
+										{t('selectCredentialPopup.trustCheckTitle')}
+									</span>
+									<div className="flex w-full border border-gray-300 dark:border:gray-600 rounded-md p-2 max-h-[13rem] overflow-y-auto">
+										<div className='flex flex-col'>
+											<div className='flex gap-2 mb-3 items-center'>
+												<p>
+													{t('selectCredentialPopup.trustCheckDescrition')}
+												</p>
+												<Button
+													onClick={runTrustCheck}
+													size="sm"
+													additionalClassName={`rounded-lg text-sm flex flex-row flex-nowrap items-center justify-center border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 max-h-fit
+															${(trustCheckStatus === 'idle' || trustCheckStatus === 'checking') ? 'border-primary-light text-primary-light dark:border-white text-white' :
+															trustViolations.length === 0 ? 'border-green-600 text-green-600 dark:border-green-400 text-green-400' : 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400'}`}
+												>
+													<div className='flex flex-row items-center gap-2' >
+														{trustCheckStatus === 'idle' ? (
+															<>
+																<VscWorkspaceUnknown size={18} />
+																{t('selectCredentialPopup.trustCheckButton')}
+															</>
+														) : trustCheckStatus === 'checking' ? (
+															<>
+																<VscWorkspaceUnknown size={18} />
+																{t('selectCredentialPopup.trustCheckRunning')}
+															</>
+														) : trustCheckStatus === 'done' && (
+															<>
+																{trustViolations.length === 0 ? (
+																	<VscWorkspaceTrusted size={18} />
+																) : (
+																	<VscWorkspaceUntrusted size={18} />
+																)}
+																{t('selectCredentialPopup.trustReCheckButton')}
+															</>
+														)}
+													</div>
+												</Button>
+											</div>
+											<div>
+												{trustCheckStatus === 'done' && trustViolations.length === 0 && (
+													<p className="text-sm text-green-600 mt-1 dark:text-green-400">
+														{t('selectCredentialPopup.trustCheckSuccess')}
+													</p>
+												)}
+
+												{trustCheckStatus === 'done' && trustViolations.length === 1 && (
+													<ul className="text-sm text-red-600 dark:text-red-400 mt-1">
+														{trustViolations.map((v, i) => (
+															<span key={i}>{v.message}</span>
+														))}
+													</ul>
+												)}
+												{trustCheckStatus === 'done' && trustViolations.length > 1 && (
+													<ul className="text-sm text-red-600 dark:text-red-400 list-disc ml-4 mt-1">
+														{trustViolations.map((v, i) => (
+															<li key={i}>{v.message}</li>
+														))}
+													</ul>
+												)}
+											</div>
+										</div>
+									</div>
+								</div>
+							)}
 						</div>
 
 					</>
