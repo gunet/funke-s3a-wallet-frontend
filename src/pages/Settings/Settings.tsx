@@ -12,6 +12,7 @@ import useScreenType from '../../hooks/useScreenType';
 
 import { UserData, WebauthnCredential } from '../../api/types';
 import { compareBy, toBase64Url } from '../../util';
+import { withAuthenticatorAttachmentFromHints } from '@/util-webauthn';
 import { formatDate } from '../../functions/DateFormat';
 import type { WebauthnPrfEncryptionKeyInfo, WrappedKeyInfo } from '../../services/keystore';
 import { isPrfKeyV2, serializePrivateData } from '../../services/keystore';
@@ -121,11 +122,13 @@ const WebauthnRegistation = ({
 			if (beginData.challengeId) {
 				setBeginData(beginData);
 
+				const hints = [webauthnHint];
 				const createOptions = {
 					...beginData.createOptions,
 					publicKey: {
 						...beginData.createOptions.publicKey,
-						hints: [webauthnHint],
+						hints,
+						authenticatorSelection: withAuthenticatorAttachmentFromHints(beginData.createOptions.publicKey.authenticatorSelection, hints),
 					},
 				};
 
@@ -899,7 +902,7 @@ const Settings = () => {
 
 	return (
 		<>
-			<div className="sm:px-6 w-full">
+			<div className="px-6 sm:px-12 w-full">
 				{userData && (
 					<>
 						<H1 heading={t('common.navItemSettings')} />
