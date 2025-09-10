@@ -25,6 +25,22 @@ export type DcApiCredentialWrapperCommonSchema = {
 	warning?: string;
 }
 
+export const areCredentialsSimilar = (
+	a: DcApiCredentialWrapperCommonSchema,
+	b: DcApiCredentialWrapperCommonSchema
+): boolean => {
+	if (
+		a.format === b.format &&
+		a.icon === b.icon &&
+		a.title === b.title &&
+		a.subtitle === b.subtitle
+	) {
+		return true;
+	}
+
+	return false;
+}
+
 type NativeWrapperUpdateCredentialsFn = (newList: DcApiCredentialWrapperCommonSchema[]) => void;
 
 export const CredentialsContextProvider = ({ children }) => {
@@ -42,13 +58,13 @@ export const CredentialsContextProvider = ({ children }) => {
 
 	const { getExternalEntity, getSession, get } = api;
 
-	const [supportedDcApiCredentials, setSupportedDcApiCredentials, clear] = useLocalStorage<{ [userHandle: string]: DcApiCredentialWrapperCommonSchema[] }>("supportedDcApiCredentials", {});
+	const [supportedDcApiCredentials, setSupportedDcApiCredentials, clear] = useLocalStorage<DcApiCredentialWrapperCommonSchema[]>("supportedDcApiCredentials", []);
 
 	useEffect(() => {
 		if (!vcEntityList || vcEntityList.length === 0 || !keystore || !helper) {
 			return;
 		}
-		const userHandle = keystore.getUserHandleB64u();
+		// const userHandle = keystore.getUserHandleB64u();
 
 		async function updateSupportedDcApiCreds() {
 			const supportedCredentials = [];
@@ -92,9 +108,15 @@ export const CredentialsContextProvider = ({ children }) => {
 				}
 				supportedCredentials.push(supportedCredential);
 			}
-			setSupportedDcApiCredentials((val) => {
-				val[userHandle] = supportedCredentials;
-				return val;
+
+			setSupportedDcApiCredentials(prev => {
+				if (!supportedCredentials?.length) return prev;
+
+				const additions = supportedCredentials.filter(
+					sc => !prev.some(dcApiStored => areCredentialsSimilar(dcApiStored, sc))
+				);
+
+				return additions.length ? [...prev, ...additions] : prev;
 			});
 		}
 
@@ -106,12 +128,9 @@ export const CredentialsContextProvider = ({ children }) => {
 		if (!supportedDcApiCredentials || !window.nativeWrapper || !window.nativeWrapper.updateAllCredentials) {
 			return;
 		}
-		const aggregatedSupportedDcApiCreds = Object.values(supportedDcApiCredentials).reduce<DcApiCredentialWrapperCommonSchema[]>(
-			(acc, arr) => [...acc, ...arr],
-			[]
-		);
+
 		// @ts-ignore
-		nativeWrapper.updateAllCredentials(JSON.stringify(aggregatedSupportedDcApiCreds));
+		nativeWrapper.updateAllCredentials(JSON.stringify(supportedDcApiCredentials));
 	}, [supportedDcApiCredentials]);
 
 	const initializeEngine = useCallback(async (useCache: boolean) => {
