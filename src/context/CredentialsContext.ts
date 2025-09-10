@@ -15,7 +15,7 @@ export type Instance = {
 	sigCount: number;
 }
 
-export type ExtendedVcEntity = WalletBaseStateCredential & {
+export type ExtendedVcEntity = WalletStateCredential & {
 	parsedCredential: ParsedCredential;
 	isExpired: boolean;
 	instances: Instance[];
