@@ -55,6 +55,7 @@ export const CredentialsContextProvider = ({ children }) => {
 	const [credentialEngine, setCredentialEngine] = useState<any | null>(null);
 	// const engineRef = useRef<any>(null);
 	const prevIsLoggedIn = useRef<boolean>(null);
+	const prevSupportedDCApi = useRef<any>(null);
 
 	const { getExternalEntity, getSession, get } = api;
 
@@ -116,7 +117,11 @@ export const CredentialsContextProvider = ({ children }) => {
 					sc => !prev.some(dcApiStored => areCredentialsSimilar(dcApiStored, sc))
 				);
 
-				return additions.length ? [...prev, ...additions] : prev;
+				if (additions.length === 0) {
+					return prev;
+				} else {
+					return [...prev, ...additions];
+				}
 			});
 		}
 
@@ -129,8 +134,13 @@ export const CredentialsContextProvider = ({ children }) => {
 			return;
 		}
 
-		// @ts-ignore
-		nativeWrapper.updateAllCredentials(JSON.stringify(supportedDcApiCredentials));
+		// Avoid triggering wrapper without any changes
+		if (prevSupportedDCApi.current === null || (JSON.stringify(prevSupportedDCApi.current) !== JSON.stringify(supportedDcApiCredentials))) {
+			// TODO: That's a rather weak and will throw false positives
+			// @ts-ignore
+			nativeWrapper.updateAllCredentials(JSON.stringify(supportedDcApiCredentials));
+			prevSupportedDCApi.current = supportedDcApiCredentials;
+		}
 	}, [supportedDcApiCredentials]);
 
 	const initializeEngine = useCallback(async (useCache: boolean) => {
