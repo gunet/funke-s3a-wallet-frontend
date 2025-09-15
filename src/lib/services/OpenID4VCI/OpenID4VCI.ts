@@ -133,7 +133,7 @@ export function useOpenID4VCI({ errorCallback, showPopupConsent, showMessagePopu
 	const credentialRequest = useCallback(
 		async (response: any, flowState: WalletBaseStateCredentialIssuanceSession) => {
 			const {
-				data: { access_token },
+				data: { access_token, c_nonce },
 			} = response;
 
 			const [credentialIssuerMetadata] = await Promise.all([
@@ -146,6 +146,9 @@ export function useOpenID4VCI({ errorCallback, showPopupConsent, showMessagePopu
 			if (credentialIssuerMetadata.metadata.nonce_endpoint) {
 				const nonceEndpointResp = await httpProxy.post(credentialIssuerMetadata.metadata.nonce_endpoint, {});
 				const { c_nonce } = nonceEndpointResp.data as { c_nonce: string };
+				credentialRequestBuilder.setCNonce(c_nonce);
+			}
+			else if (c_nonce) { // add compatibility with OpenID4VCI draft 13
 				credentialRequestBuilder.setCNonce(c_nonce);
 			}
 
