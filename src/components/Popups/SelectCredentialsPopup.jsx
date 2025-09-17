@@ -15,10 +15,10 @@ import { useCredentialName } from '@/hooks/useCredentialName';
 import i18n from '@/i18n';
 import { verifyAttestationWithRegistrar } from '@/lib/services/VerifierRegistrar/VerifyAttestation';
 import { checkVerifierViolations } from '@/lib/services/VerifierRegistrar/CheckVerifierViolations';
-import { verifyVerifierInfo } from '@/lib/services/DisclosurePolicy/VerifyVerifierInfo';
 import { checkIssuerPolicyConformance } from '@/lib/services/DisclosurePolicy/CheckIssuerPolicyConformance';
 import { VscWorkspaceUnknown, VscWorkspaceTrusted, VscWorkspaceUntrusted } from "react-icons/vsc";
 import CredentialsContext from '@/context/CredentialsContext';
+import { VerifiableCredentialFormat } from 'wallet-common/dist/types';
 
 const SelectableCredentialSlideCard = ({
 	vcEntity,
@@ -203,22 +203,20 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 		setPolicyCheckStatus('checking');
 		try {
 			const verifierInfoArr = popupState?.options?.verifierInfo || [];
-			const viJwtObj = verifierInfoArr.find(att => att.format === 'jwt');
-			const viInfoSdJwt = verifierInfoArr.find(att => att.format === 'dc+sd-jwt');
-			console.log("verifierInfoArr = ", verifierInfoArr)
-			// const vi = await verifyVerifierInfo(verifierInfoArr, parseCredential);
 
 			const violations = await checkIssuerPolicyConformance({
 				conformantCredentialsMap: popupState?.options?.conformantCredentialsMap || {},
 				vcEntityList,
 				verifierInfoArr,
-				parseCredential
+				expectedTypForDcSdJwt: VerifiableCredentialFormat.DC_SDJWT,
 			});
 
 			setPolicyViolations(violations);
 		} catch (e) {
 			console.error("Policy check failed:", e);
-			setPolicyViolations([{ descriptorId: '', message: t('selectCredentialPopup.policyCheckError', 'Policy check error') }]);
+			setPolicyViolations([
+				{ descriptorId: '', message: t('selectCredentialPopup.policyCheckError') }
+			]);
 		} finally {
 			setPolicyCheckStatus('done');
 		}
@@ -450,8 +448,8 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 													onClick={runTrustCheck}
 													size="sm"
 													additionalClassName={`rounded-lg text-sm flex flex-row flex-nowrap items-center justify-center border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 max-h-fit
-															${(trustCheckStatus === 'idle' || trustCheckStatus === 'checking') ? 'border-primary-light text-primary-light dark:border-white text-white' :
-															trustViolations.length === 0 ? 'border-green-600 text-green-600 dark:border-green-400 text-green-400' : 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400'}`}
+															${(trustCheckStatus === 'idle' || trustCheckStatus === 'checking') ? 'border-primary-light text-primary-light dark:border-white dark:text-white' :
+															trustViolations.length === 0 ? 'border-green-600 text-green-600 dark:border-green-400 dark:text-green' : 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400'}`}
 												>
 													<div className='flex flex-row items-center gap-2' >
 														{trustCheckStatus === 'idle' ? (
@@ -519,9 +517,9 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 													size="sm"
 													additionalClassName={`rounded-lg text-sm flex flex-row items-center justify-center border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 max-h-fit
 														${(policyCheckStatus === 'idle' || policyCheckStatus === 'checking')
-															? 'border-primary-light text-primary-light dark:border-white text-white'
+															? 'border-primary-light text-primary-light dark:border-white text-gray-700 dark:text-white'
 															: (policyViolations.length === 0
-																	? 'border-green-600 text-green-600 dark:border-green-400 text-green-400'
+																	? 'border-green-600 text-green-600 dark:border-green-400 text-green-400 dark:text-green-400'
 																	: 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400')}`}
 												>
 													<div className='flex flex-row items-center gap-2' >

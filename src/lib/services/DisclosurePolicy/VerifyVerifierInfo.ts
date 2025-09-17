@@ -1,51 +1,62 @@
-// import { importX509, jwtVerify } from "jose";
+import { importX509, jwtVerify, decodeProtectedHeader } from "jose";
 import { VerifiableCredentialFormat } from "wallet-common/dist/types";
 
-/**
- * Verifies an array of verifier_info objects (dc+sd-jwt).
- * Returns { ok, payload, format } for the first valid one or an error.
- */
-export async function verifyVerifierInfo(
-  verifierInfoArr: Array<{ format: string, data: string, credential_ids?: string[] }>,
-	parseCredential?: Function
-): Promise<
-  { ok: true; payload: any; format: string } | { ok: false; reason: string }
-> {
-  if (!verifierInfoArr || verifierInfoArr.length === 0) return { ok: false, reason: "missing" };
-
-  for (const viObj of verifierInfoArr) {
-    try {
-      // if (viObj.format === "jwt") {
-      //   const [encodedHeader] = viObj.data.split(".");
-      //   const header = JSON.parse(new TextDecoder().decode(base64urlToUint8(encodedHeader)));
-      //   if (!header?.x5c?.[0]) continue;
-      //   const pem = `-----BEGIN CERTIFICATE-----\n${header.x5c[0]}\n-----END CERTIFICATE-----`;
-      //   const publicKey = await importX509(pem, header.alg || "ES256");
-      //   const { payload } = await jwtVerify(viObj.data, publicKey);
-      //   if (payload?.exp && payload.exp * 1000 < Date.now()) continue;
-      //   return { ok: true, payload, format: "jwt" };
-      // } 
-			if (viObj.format === VerifiableCredentialFormat.DC_SDJWT) {
-				const result = await parseCredential(viObj);
-				console.log("verifyVerifierInfo: parseCredential result = ", result);
-				const {  validUntil } = result.validityInfo;
-				if (Math.floor(validUntil.getTime() / 1000) < Math.floor(new Date().getTime() / 1000)){
-					continue;
-				};
-				return { ok: true, payload: result.signedClaims, format: "dc+sd-jwt" };
-      }
-    } catch (e) {
-      console.warn("Error verifying verifier_info:", e);
-    }
-  }
-  return { ok: false, reason: "no_valid_verifier_info" };
+function issuerJwsFromSdJwt(sdjwt: string): string {
+	const i = sdjwt.indexOf("~");
+	return i === -1 ? sdjwt : sdjwt.slice(0, i);
 }
 
-// function base64urlToUint8(b64u: string): Uint8Array {
-//   const pad = (s: string) => s + "===".slice((s.length + 3) % 4);
-//   const b64 = pad(b64u.replace(/-/g, "+").replace(/_/g, "/"));
-//   const bin = atob(b64);
-//   const bytes = new Uint8Array(bin.length);
-//   for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-//   return bytes;
-// }
+export type VerifierInfoEntry = {
+	format: VerifiableCredentialFormat.DC_SDJWT | VerifiableCredentialFormat.VC_SDJWT;
+	data: string;
+	credential_ids?: string[];
+};
+
+export type VerifyOpts = {
+	expectedVct?: string;
+	expectedFormat?: string;
+	expectTypContains?: string;
+};
+
+export async function verifyVerifierInfoData(
+	entry: VerifierInfoEntry,
+	opts: VerifyOpts = {}
+): Promise<{ ok: true; header: any; payload: any } | { ok: false; reason: string }> {
+	try {
+		const jws = entry.format === VerifiableCredentialFormat.DC_SDJWT
+			? issuerJwsFromSdJwt(entry.data)
+			: entry.data;
+		const header = decodeProtectedHeader(jws);
+
+		// ---- sig verification ----
+		const x5c: string[] | undefined = Array.isArray(header?.x5c) ? header.x5c : undefined;
+		const alg: string | undefined = typeof header?.alg === "string" ? header.alg : undefined;
+		if (!x5c || x5c.length === 0 || !alg) {
+			return { ok: false, reason: "missing_x5c_or_alg" };
+		}
+
+		const pem = `-----BEGIN CERTIFICATE-----\n${x5c[0]}\n-----END CERTIFICATE-----`;
+		const pubKey = await importX509(pem, alg);
+
+		const { payload, protectedHeader } = await jwtVerify(jws, pubKey);
+
+		// ---- policy checks ----
+		if (opts.expectedFormat && opts.expectedFormat !== entry.format) {
+			console.log(`Format mismatch: expected ${opts.expectedFormat}, got ${entry.format}`);
+			return { ok: false, reason: `format_mismatch:${entry.format}!=${opts.expectedFormat}` };
+		}
+
+		if (opts.expectTypContains && protectedHeader?.typ && String(protectedHeader.typ) !== opts.expectTypContains) {
+			console.log(`Typ mismatch: expected to contain ${opts.expectTypContains}, got ${protectedHeader.typ}`);
+			return { ok: false, reason: `typ_mismatch:${protectedHeader.typ}` };
+		}
+		if (opts.expectedVct && (payload as any)?.vct !== opts.expectedVct) {
+			console.log(`VCT mismatch: expected ${opts.expectedVct}, got ${(payload as any)?.vct}`);
+			return { ok: false, reason: `vct_mismatch:${(payload as any)?.vct}` };
+		}
+
+		return { ok: true, header: protectedHeader, payload };
+	} catch (e: any) {
+		return { ok: false, reason: `verification_error:${e?.message ?? String(e)}` };
+	}
+}
