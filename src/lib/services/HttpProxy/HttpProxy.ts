@@ -3,9 +3,12 @@ import axios from 'axios';
 import { IHttpProxy } from '../../interfaces/IHttpProxy';
 import StatusContext from '@/context/StatusContext';
 import { addItem, getItem, removeItem } from '@/indexedDB';
+import { encryptedHttpRequest, fetchKeyConfig } from '@/lib/utils/ohttpHelpers';
 // @ts-ignore
 const walletBackendServerUrl = import.meta.env.VITE_WALLET_BACKEND_URL;
 const inFlightRequests = new Map<string, Promise<any>>();
+
+const useOblivious = true;
 
 const parseCacheControl = (header: string) =>
 	Object.fromEntries(
@@ -81,18 +84,45 @@ export function useHttpProxy(): IHttpProxy {
 
 			const requestPromise = (async () => {
 				try {
-					const response = await axios.post(`${walletBackendServerUrl}/proxy`, {
-						headers,
-						url,
-						method: 'get',
-					}, {
-						timeout: 2500,
-						headers: {
-							Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken')!),
-						},
-						...(isBinaryRequest && { responseType: 'arraybuffer' }),
+					let response;
+					if (useOblivious) {
+						console.log("Using oblivious");
+						// fetch keys - TODO: this should not happen per request
+						const keyConfig = await fetchKeyConfig('http://localhost:4567/ohttp-keys');
+						console.log(keyConfig);
+						response = await encryptedHttpRequest("http://localhost:4001/api/relay", keyConfig, {
+							method: 'GET',
+							headers,
+							url,
+						})
+						response.data = response.body;
+						if (isBinaryRequest) {
+							response = {
+								...response,
+								data: [...response.body] //ab
+							}
+						} else {
+							response = {
+								data: {...response}
+							};
+							// todo: assuming content type application/json
+							response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+						}
+					} else {
+						response = await axios.post(`${walletBackendServerUrl}/proxy`, {
+							headers,
+							url,
+							method: 'get',
+						}, {
+							timeout: 2500,
+							headers: {
+								Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken')!),
+							},
+							...(isBinaryRequest && { responseType: 'arraybuffer' }),
+						}
+						);
 					}
-					);
+
 
 					const res = response.data;
 
