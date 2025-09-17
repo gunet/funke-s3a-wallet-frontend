@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useContext, useRef, useEffect } from 'react';
 import { getItem } from '../indexedDB';
 import SessionContext from './SessionContext';
-import { compareBy, reverse } from '../util';
+import { compareBy, reverse, toBase64 } from '../util';
 import { initializeCredentialEngine } from "../lib/initializeCredentialEngine";
 import { CredentialVerificationError } from "wallet-common/dist/error";
 import { useHttpProxy } from "@/lib/services/HttpProxy/HttpProxy";
@@ -10,6 +10,38 @@ import { VerifiableCredentialFormat } from "wallet-common/dist/types";
 import { useOpenID4VCIHelper } from "@/lib/services/OpenID4VCIHelper";
 import { ParsedCredential } from "wallet-common/dist/types";
 import { WalletStateCredential } from '@/services/WalletStateOperations';
+import { useLocalStorage } from '@/hooks/useStorage';
+import { WalletStateUtils } from '@/services/WalletStateUtils';
+import axios from 'axios';
+
+export type DcApiCredentialWrapperCommonSchema = {
+	id: number;
+	format: string;
+	title: string;
+	subtitle: string;
+	icon: string;
+	fields: Array<unknown>;
+	disclaimer?: string;
+	warning?: string;
+}
+
+export const areCredentialsSimilar = (
+	a: DcApiCredentialWrapperCommonSchema,
+	b: DcApiCredentialWrapperCommonSchema
+): boolean => {
+	if (
+		a.format === b.format &&
+		a.icon === b.icon &&
+		a.title === b.title &&
+		a.subtitle === b.subtitle
+	) {
+		return true;
+	}
+
+	return false;
+}
+
+type NativeWrapperUpdateCredentialsFn = (newList: DcApiCredentialWrapperCommonSchema[]) => void;
 
 export const CredentialsContextProvider = ({ children }) => {
 	const { api, keystore, isLoggedIn } = useContext(SessionContext);
@@ -23,8 +55,93 @@ export const CredentialsContextProvider = ({ children }) => {
 	const [credentialEngine, setCredentialEngine] = useState<any | null>(null);
 	// const engineRef = useRef<any>(null);
 	const prevIsLoggedIn = useRef<boolean>(null);
+	const prevSupportedDCApi = useRef<any>(null);
 
 	const { getExternalEntity, getSession, get } = api;
+
+	const [supportedDcApiCredentials, setSupportedDcApiCredentials, clear] = useLocalStorage<DcApiCredentialWrapperCommonSchema[]>("supportedDcApiCredentials", []);
+
+	useEffect(() => {
+		if (!vcEntityList || vcEntityList.length === 0 || !keystore || !helper) {
+			return;
+		}
+		// const userHandle = keystore.getUserHandleB64u();
+
+		async function updateSupportedDcApiCreds() {
+			const supportedCredentials = [];
+			for (const vc of vcEntityList) {
+				const { metadata } = await helper.getCredentialIssuerMetadata(vc.credentialIssuerIdentifier, true);
+				const supportedCredConf = metadata.credential_configurations_supported[vc.credentialConfigurationId];
+				let credType = null;
+				if (supportedCredConf.format === VerifiableCredentialFormat.DC_SDJWT || supportedCredConf.format === VerifiableCredentialFormat.VC_SDJWT) {
+					credType = (supportedCredConf as any).vct;
+				}
+				else if (supportedCredConf.format === VerifiableCredentialFormat.MSO_MDOC) {
+					credType = (supportedCredConf as any).doctype;
+				}
+				const result = supportedCredentials.filter((cred) => cred.format === credType);
+				if (result.length > 0) { // don't insert record if a record with the same credential type exists
+					continue;
+				}
+
+				let icon = "";
+				if (supportedCredConf?.display && supportedCredConf?.display[0] && supportedCredConf.display[0]?.background_image?.uri) {
+					const uri = supportedCredConf.display[0]?.background_image?.uri;
+					let icon = '';
+					try {
+						const img = await axios.get(uri, { responseType: 'arraybuffer' });
+						const contentType = img.headers['content-type'];
+						const b64data = toBase64(img.data);
+						const b64UriData = `data:${contentType};base64,${b64data}`
+						icon = b64UriData;
+					} catch (e) {
+						console.error(e);
+					}
+				}
+				const newRandomId = WalletStateUtils.getRandomUint32();
+				const supportedCredential = {
+					id: newRandomId,
+					fields: [],
+					format: credType as string,
+					icon: icon,
+					title: supportedCredConf?.display && supportedCredConf?.display[0] && supportedCredConf.display[0]?.name ? supportedCredConf.display[0]?.name : "",
+					subtitle: supportedCredConf?.display && supportedCredConf?.display[0] && supportedCredConf.display[0]?.description ? supportedCredConf.display[0]?.description : "",
+				}
+				supportedCredentials.push(supportedCredential);
+			}
+
+			setSupportedDcApiCredentials(prev => {
+				if (!supportedCredentials?.length) return prev;
+
+				const additions = supportedCredentials.filter(
+					sc => !prev.some(dcApiStored => areCredentialsSimilar(dcApiStored, sc))
+				);
+
+				if (additions.length === 0) {
+					return prev;
+				} else {
+					return [...prev, ...additions];
+				}
+			});
+		}
+
+		updateSupportedDcApiCreds();
+	}, [keystore, vcEntityList, setSupportedDcApiCredentials, helper]);
+
+	useEffect(() => {
+		// @ts-ignore
+		if (!supportedDcApiCredentials || !window.nativeWrapper || !window.nativeWrapper.updateAllCredentials) {
+			return;
+		}
+
+		// Avoid triggering wrapper without any changes
+		if (prevSupportedDCApi.current === null || (JSON.stringify(prevSupportedDCApi.current) !== JSON.stringify(supportedDcApiCredentials))) {
+			// TODO: That's a rather weak and will throw false positives
+			// @ts-ignore
+			nativeWrapper.updateAllCredentials(JSON.stringify(supportedDcApiCredentials));
+			prevSupportedDCApi.current = supportedDcApiCredentials;
+		}
+	}, [supportedDcApiCredentials]);
 
 	const initializeEngine = useCallback(async (useCache: boolean) => {
 		const trustedCertificates: string[] = [];

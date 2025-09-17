@@ -210,6 +210,16 @@
 			"descriptionLatestVersion": "You are currently using the latest $t(common.walletName) version {{react_app_version}}",
 			"descriptionOldVersion": "You are currently using wwWallet version {{react_app_version}}.<br/> <strong>A new version is available.</strong> Please <reloadButton>refresh</reloadButton> to update!"
 		},
+		"appearance": {
+			"colorScheme": {
+				"dark": "Dark",
+				"description": "Choose if appearance should be light or dark, or follow your device settings.",
+				"light": "Light",
+				"system": "System",
+				"title": "Color Scheme"
+			},
+			"title": "Appearance"
+		},
 		"deleteAccount": {
 			"buttonText": "Delete your account",
 			"deleteButtonTitleLocked": "You cannot delete your account while locked",
@@ -371,6 +381,19 @@
 	},
 	"updateNotification": {
 		"description": "New Version is available!"
+	},
+	"viewSelect": {
+		"aria": {
+			"menuLabel": "Credential view options",
+			"option": "View: {{label}}",
+			"toggle": "Change view"
+		},
+		"options": {
+			"horizontalSlider": "Horizontal Slider",
+			"list": "List",
+			"verticalSlider": "Vertical Slider"
+		},
+		"view": "View"
 	},
 	"welcomeModal": {
 		"description": "Discover the <strong> $t(common.walletName) </strong>, your ultimate tool for managing digital credentials. Effortlessly view, get, present and keep track of all your credentials!",

@@ -6,7 +6,7 @@ import { useContext, useCallback, useMemo, useRef, useEffect, useState } from "r
 import SessionContext from "@/context/SessionContext";
 import { OpenidCredentialIssuerMetadata } from "wallet-common";
 import CredentialsContext from "@/context/CredentialsContext";
-import { OPENID4VCI_MAX_ACCEPTED_BATCH_SIZE } from "@/config";
+import { OPENID4VCI_MAX_ACCEPTED_BATCH_SIZE, PID_CREDENTIAL_ISSUER_IDENTIFIER } from "@/config";
 
 export function useCredentialRequest() {
 	const httpProxy = useHttpProxy();
@@ -132,6 +132,9 @@ export function useCredentialRequest() {
 			openID4VCIHelper.getCredentialIssuerMetadata(credentialIssuerIdentifier),
 			openID4VCIHelper.getClientId(credentialIssuerIdentifier),
 		]);
+		if (credentialIssuerMetadata.metadata.credential_issuer === PID_CREDENTIAL_ISSUER_IDENTIFIER) { // remove batch size for PID issuer
+			credentialIssuerMetadata.metadata.batch_credential_issuance = { batch_size: undefined };
+		}
 
 		const credentialEndpointBody = { } as any;
 		const numberOfProofs = credentialIssuerMetadata.metadata.batch_credential_issuance?.batch_size && credentialIssuerMetadata.metadata.batch_credential_issuance?.batch_size > OPENID4VCI_MAX_ACCEPTED_BATCH_SIZE ?
@@ -212,7 +215,13 @@ export function useCredentialRequest() {
 
 		credentialIssuerMetadataRef.current = credentialIssuerMetadata;
 
-		credentialEndpointBody.credential_configuration_id = credentialConfigurationId;
+		credentialEndpointBody.credential_configuration_id = credentialIssuerMetadata.metadata.credential_issuer === PID_CREDENTIAL_ISSUER_IDENTIFIER ? undefined : credentialConfigurationId; // set to undefined value in order to support OpenID4VCI draft 13 for german pid
+		credentialEndpointBody.format = credentialIssuerMetadata.metadata.credential_issuer === PID_CREDENTIAL_ISSUER_IDENTIFIER ? credentialIssuerMetadata.metadata.credential_configurations_supported[credentialConfigurationId].format : undefined; // OpenID4VCI draft 13 support for PID issuer
+		// @ts-ignore
+		credentialEndpointBody.vct = credentialIssuerMetadata.metadata.credential_issuer === PID_CREDENTIAL_ISSUER_IDENTIFIER ? credentialIssuerMetadata.metadata.credential_configurations_supported[credentialConfigurationId]?.vct : undefined; // OpenID4VCI draft 13 support for PID issuer
+		// @ts-ignore
+		credentialEndpointBody.doctype = credentialIssuerMetadata.metadata.credential_issuer === PID_CREDENTIAL_ISSUER_IDENTIFIER ? credentialIssuerMetadata.metadata.credential_configurations_supported[credentialConfigurationId]?.doctype : undefined; // OpenID4VCI draft 13 support for PID issuer
+
 
 		console.log("Credential endpoint body = ", credentialEndpointBody);
 
@@ -245,6 +254,14 @@ export function useCredentialRequest() {
 			const { protectedHeader, plaintext } = result.data as CompactDecryptResult;
 			const payload = JSON.parse(new TextDecoder().decode(plaintext));
 			credentialResponse.data = payload;
+		}
+		if (credentialResponse.status === 200 &&
+				'credential' in (credentialResponse.data as any) &&
+				typeof credentialResponse.data["credential"] === 'string') {  // transform OpenID4VCI draft 13 response to OpenID4VCI draft 15 response
+			console.info("OpenID4VCI: transforming OpenID4VCI draft 13 response to OpenID4VCI draft 15 response")
+			const credential = credentialResponse.data["credential"];
+			credentialResponse.data["credentials"] = [ { credential } ];
+			delete credentialResponse.data["credential"];
 		}
 		if (credentialResponse.status !== 200) {
 			console.error("Error: Credential response = ", JSON.stringify(credentialResponse));
