@@ -35,3 +35,5 @@ export const OPENID4VCI_MAX_ACCEPTED_BATCH_SIZE: number = import.meta.env.VITE_O
 export const RP_REGISTRAR_CA_URL = import.meta.env.VITE_RP_REGISTRAR_CA_URL || '';
 export const OPENID4VCI_EID_CLIENT_URL = import.meta.env.VITE_OPENID4VCI_EID_CLIENT_URL;
 export const PID_CREDENTIAL_ISSUER_IDENTIFIER = import.meta.env.VITE_PID_CREDENTIAL_ISSUER_IDENTIFIER;
+export const OHTTP_KEY_CONFIG = import.meta.env.VITE_OHTTP_KEY_CONFIG;
+export const OHTTP_RELAY = import.meta.env.VITE_OHTTP_RELAY;
