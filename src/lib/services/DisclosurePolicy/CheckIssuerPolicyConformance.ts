@@ -139,7 +139,7 @@ export async function checkIssuerPolicyConformance(opts: Options): Promise<Polic
 			violations.push({
 				descriptorId,
 				message:
-					"Issuer policy requires attestation-based disclosure, but no valid verifier_info satisfied the issuer’s required attestation credential(s).",
+					"No valid verifier attestation satisfied the issuer’s disclosure policy for this credential.",
 			});
 		}
 	}
