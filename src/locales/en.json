@@ -347,6 +347,7 @@
 		"selectDescription": "Select the Credential you want to present.",
 		"selectTitle": "Select",
 		"signedDocuments": "Documents to be Signed: ",
+		"qcRequest": "This transaction requests the creation of signature certificates according to the Terms and Conditions (T&C) of the QTSP",
 		"specificClaimsRequested": "The verifier has requested specific claims of the credential.",
 		"summaryDescription": "You are about to share <strong>only the following fields</strong> from the selected credentials.",
 		"summaryTitle": "Summary",

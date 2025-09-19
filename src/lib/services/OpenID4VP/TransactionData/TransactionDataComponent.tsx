@@ -18,7 +18,7 @@ export const withTransactionData = (req: TransactionDataRequest) => {
 				</div>
 			);
 		}
-		else if (req.type === 'qes_authorization') {
+		else if (req.type === 'https://cloudsignatureconsortium.org/2025/qes') {
 			return (
 				<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2 mb-2">
 					<span className="text-primary text-sm font-bold dark:text-white block mb-1">
@@ -37,6 +37,16 @@ export const withTransactionData = (req: TransactionDataRequest) => {
 						</div>
 						<img src={document} className="h-12"></img>
 					</div>
+				</div>
+			)
+		}
+		else if (req.type === 'https://cloudsignatureconsortium.org/2025/qc-request') {
+			return (
+				<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2 mb-2">
+					<span className="text-primary text-sm font-bold dark:text-white block mb-1">
+						{t('selectCredentialPopup.qcRequest')}
+					</span>
+					<p></p>
 				</div>
 			)
 		}
