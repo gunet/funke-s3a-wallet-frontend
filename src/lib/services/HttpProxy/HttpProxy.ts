@@ -107,8 +107,13 @@ export function useHttpProxy(): IHttpProxy {
 							response = {
 								data: {...response}
 							};
-							// todo: assuming content type application/json
-							response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+							const responseHeader = response?.data?.header?.['content-type'];
+							if (responseHeader && responseHeader.trim().startsWith('application/json')) {
+								console.log("Response header: JSON");
+								response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+							} else {
+								response.data.data = new TextDecoder().decode(response.data.data);
+							}
 						}
 					} else {
 						response = await axios.post(`${walletBackendServerUrl}/proxy`, {
@@ -222,20 +227,43 @@ export function useHttpProxy(): IHttpProxy {
 			body: any,
 			headers: Record<string, string>
 		): Promise<{ status: number; headers: Record<string, unknown>; data: unknown }> {
+			let response;
 			try {
-				const response = await axios.post(`${walletBackendServerUrl}/proxy`, {
-					headers: headers,
-					url: url,
-					method: 'post',
-					data: body,
-				}, {
-					timeout: 2500,
-					headers: {
-						Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken'))
-					}
-				});
+				if (useOblivious) {
+					console.log("Using oblivious");
+					// fetch keys - TODO: this should not happen per request
+					const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
+					console.log(keyConfig);
+					response = await encryptedHttpRequest(OHTTP_RELAY, keyConfig, {
+						method: 'POST',
+						headers,
+						url,
+						body
+					})
+					response.data = response.body;
+					response = {
+						data: { ...response }
+					};
+					// todo: assuming content type application/json
+					response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+				} else {
+					response = await axios.post(`${walletBackendServerUrl}/proxy`, {
+						headers: headers,
+						url: url,
+						method: 'post',
+						data: body,
+					}, {
+						timeout: 2500,
+						headers: {
+							Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken'))
+						}
+					});
+				}
+
 				return response.data;
 			} catch (err) {
+				console.log("Post failed");
+				console.log(JSON.stringify(err, Object.getOwnPropertyNames(err)));
 				return {
 					data: err.response.data.data,
 					headers: err.response.data.headers,

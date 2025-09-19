@@ -18,7 +18,8 @@ type KeyConfig = { keyId: number; kemId: number; publicKey: Uint8Array; pairs: K
 export type HttpRequestParameters = {
 	method: "GET" | "POST",
 	url: string,
-	headers: Record<string, string | Uint8Array>
+	headers: Record<string, string | Uint8Array>,
+	body?: string | object
 }
 
 export const toHex = (u8?: Uint8Array | null) => u8 ? [...u8].map(b => b.toString(16).padStart(2, '0')).join('') : ''
@@ -247,7 +248,19 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 
 	const ephemeralPublic = sender.enc;
 
-	const body = new TextEncoder().encode('{"x":1}'); // TODO: hardcoded test
+	let body;
+	console.log("Request params headers");
+	console.log(JSON.stringify(requestParams.headers));
+	if (requestParams.headers && requestParams.headers['Content-Type'] === 'application/json') { // TODO: assuming json or forms only
+		console.log('parsing as json');
+		body = requestParams.body ? new TextEncoder().encode(JSON.stringify(requestParams.body)) : new TextEncoder().encode('{}')
+	} else {
+		console.log('parsing as form');
+		body = typeof requestParams?.body === 'string' ? new TextEncoder().encode(requestParams.body) : new Uint8Array(0);
+	}
+
+	console.log("body=");
+	console.log(body);
 
 	const targetUrl = new URL(requestParams.url);
 
@@ -260,6 +273,7 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 		body,                 // <— known-length body
 		// trailers: []       // trailers are known-length too; zero-length is encoded as 0
 	});
+	console.log(toHex(req));
 	console.log(decodeKnownLengthRequest(req));
 	const ct2 = await sender.seal(toArrayBuffer(req) as ArrayBuffer);
 
@@ -295,7 +309,7 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 	const bodyText = new TextDecoder().decode(decodedResponse.body);
 	// console.log(bodyText);
 	console.log("OHTTP Request:");
-	console.log(requestParams);
+	console.log(JSON.stringify(requestParams));
 	console.log("OHTTP Response Decoded:");
 	console.log(decodedResponse);
 	console.log("OHTTP response body text");

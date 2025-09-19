@@ -91,9 +91,10 @@ export function encRequestControlData(
 }
 
 // --- Content encoders ---
-export function encKnownContent(body?: Uint8Array): Uint8Array {
-  const b = body ?? new Uint8Array(0);
-  return concat(encVarint(b.length), b);
+export function encKnownContent(body: Uint8Array): Uint8Array {
+  // const b = body ?? new Uint8Array(0);
+	// console.log("Encoding body with length=", b.length);
+  return concat(encVarint(body.length), body);
 }
 
 // Indeterminate content: ChunkLen(i)>0, Chunk..., ... , 0
@@ -114,36 +115,35 @@ export function encodeKnownLengthRequest(opts: {
   method: string;
   scheme: string;            // e.g. "https"
   authority: string;         // host[:port], "" allowed
-  path: string;              // absolute-path + query, e.g. "/v1/check?x=1"
+  path: string;              // absolute-path + query
   headers?: Array<[string, string | Uint8Array]>;
-  body?: Uint8Array;         // if undefined, length 0 (and trailers can be omitted per truncation rules)
+  body?: Uint8Array;         // undefined = omit section; Uint8Array(0) = explicit empty
   trailers?: Array<[string, string | Uint8Array]>;
-  padBytes?: number;         // number of trailing zero bytes to add
+  padBytes?: number;
 }): Uint8Array {
   const framing = encVarint(0); // known-length request
   const rcd = encRequestControlData(opts.method, opts.scheme, opts.authority, opts.path);
 
   const hdrs = encKnownFieldSection(opts.headers ?? []);
-  const content = encKnownContent(opts.body);
   const trls = encKnownFieldSection(opts.trailers ?? []);
 
-  // RFC 9292 allows truncating empty content+trailers instead of emitting explicit 0 lengths.
-  // if body and trailers are both empty, we can omit both sections entirely.
-  const emptyBody = !opts.body || opts.body.length === 0;
-  const emptyTrailers = !opts.trailers || opts.trailers.length === 0;
+  const bodyProvided = opts.body !== undefined;                // <-- key semantic split
+  const trailersEmpty = !opts.trailers || opts.trailers.length === 0;
 
   const parts: Uint8Array[] = [framing, rcd, hdrs];
-  if (!(emptyBody && emptyTrailers)) {
-    parts.push(content);
-    if (!emptyTrailers) parts.push(trls);
-    else {
-      // If trailers are empty but body present (possibly empty), still include zero-length trailers.
-      parts.push(encVarint(0)); // Known-Length Field Section with Length=0
-    }
+
+  if (bodyProvided || !trailersEmpty) {
+    // If body is provided, encode it (even if length=0). If not provided but trailers
+    // exist, RFC requires a content section (which will be length=0).
+    const bodyToEncode = opts.body ?? new Uint8Array(0);
+    parts.push(encKnownContent(bodyToEncode));
+
+    // Trailer section must follow content; if caller provided none, emit zero-length section.
+    parts.push(trailersEmpty ? encVarint(0) : trls);
   }
-  if (opts.padBytes && opts.padBytes > 0) {
-    parts.push(new Uint8Array(opts.padBytes)); // zero padding
-  }
+  // else: both content and trailers omitted (legal truncation)
+
+  if (opts.padBytes && opts.padBytes > 0) parts.push(new Uint8Array(opts.padBytes)); // optional zero padding
   return concat(...parts);
 }
 
