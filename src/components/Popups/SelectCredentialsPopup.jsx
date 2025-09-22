@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useContext, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback, useContext } from 'react';
 import PopupLayout from './PopupLayout';
 import { FaRegCircle, FaCheckCircle, FaInfo, FaIdCard } from 'react-icons/fa';
 import { useTranslation, Trans } from 'react-i18next';
@@ -15,7 +15,10 @@ import { useCredentialName } from '@/hooks/useCredentialName';
 import i18n from '@/i18n';
 import { verifyAttestationWithRegistrar } from '@/lib/services/VerifierRegistrar/VerifyAttestation';
 import { checkVerifierViolations } from '@/lib/services/VerifierRegistrar/CheckVerifierViolations';
+import { checkIssuerPolicyConformance } from '@/lib/services/DisclosurePolicy/CheckIssuerPolicyConformance';
 import { VscWorkspaceUnknown, VscWorkspaceTrusted, VscWorkspaceUntrusted } from "react-icons/vsc";
+import CredentialsContext from '@/context/CredentialsContext';
+import { VerifiableCredentialFormat } from 'wallet-common/dist/types';
 
 const SelectableCredentialSlideCard = ({
 	vcEntity,
@@ -162,6 +165,7 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 
 	const [vcEntities, setVcEntities] = useState(null);
 	const { t } = useTranslation();
+	const { parseCredential } = useContext(CredentialsContext);
 	const rawKeys = useMemo(() => popupState?.options ? Object.keys(popupState.options.conformantCredentialsMap) : [], [popupState]);
 	const keys = useMemo(() => ['preview', ...rawKeys, 'summary'], [rawKeys]);
 	const stepTitles = useMemo(() => keys, [keys]);
@@ -174,6 +178,8 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 	const [currentSummarySlide, setCurrentSummarySlide] = useState(0);
 	const [trustViolations, setTrustViolations] = useState([]);
 	const [trustCheckStatus, setTrustCheckStatus] = useState('idle');
+	const [policyViolations, setPolicyViolations] = useState([]);
+	const [policyCheckStatus, setPolicyCheckStatus] = useState('idle');
 
 	const runTrustCheck = async () => {
 		if (!popupState?.options?.verifierAttestationsJwt) return;
@@ -191,6 +197,29 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 			setTrustViolations([{ type: 'error', message: t('selectCredentialPopup.trustCheckError') }]);
 		}
 		setTrustCheckStatus('done');
+	};
+
+	const runPolicyCheck = async () => {
+		setPolicyCheckStatus('checking');
+		try {
+			const verifierInfoArr = popupState?.options?.verifierInfo || [];
+
+			const violations = await checkIssuerPolicyConformance({
+				conformantCredentialsMap: popupState?.options?.conformantCredentialsMap || {},
+				vcEntityList,
+				verifierInfoArr,
+				expectedTypForDcSdJwt: VerifiableCredentialFormat.DC_SDJWT,
+			});
+
+			setPolicyViolations(violations);
+		} catch (e) {
+			console.error("Policy check failed:", e);
+			setPolicyViolations([
+				{ descriptorId: '', message: t('selectCredentialPopup.policyCheckError') }
+			]);
+		} finally {
+			setPolicyCheckStatus('done');
+		}
 	};
 
 	const requestedFieldsPerCredential = useMemo(() => {
@@ -419,8 +448,8 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 													onClick={runTrustCheck}
 													size="sm"
 													additionalClassName={`rounded-lg text-sm flex flex-row flex-nowrap items-center justify-center border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 max-h-fit
-															${(trustCheckStatus === 'idle' || trustCheckStatus === 'checking') ? 'border-primary-light text-primary-light dark:border-white text-white' :
-															trustViolations.length === 0 ? 'border-green-600 text-green-600 dark:border-green-400 text-green-400' : 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400'}`}
+															${(trustCheckStatus === 'idle' || trustCheckStatus === 'checking') ? 'border-primary-light text-primary-light dark:border-white dark:text-white' :
+															trustViolations.length === 0 ? 'border-green-600 text-green-600 dark:border-green-400 dark:text-green' : 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400'}`}
 												>
 													<div className='flex flex-row items-center gap-2' >
 														{trustCheckStatus === 'idle' ? (
@@ -464,6 +493,74 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 													<ul className="text-sm text-red-600 dark:text-red-400 list-disc ml-4 mt-1">
 														{trustViolations.map((v, i) => (
 															<li key={i}>{v.message}</li>
+														))}
+													</ul>
+												)}
+											</div>
+										</div>
+									</div>
+								</div>
+							)}
+							{popupState.options.conformantCredentialsMap && (
+								<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2">
+									<span className="text-primary text-sm font-bold dark:text-white block mb-1">
+										{t('selectCredentialPopup.policyCheckTitle')}
+									</span>
+									<div className="flex w-full border border-gray-300 dark:border:gray-600 rounded-md p-2 max-h-[13rem] overflow-y-auto">
+										<div className="flex flex-col">
+											<div className="flex gap-2 mb-3 items-center">
+												<p>
+													{t('selectCredentialPopup.policyCheckDescription')}
+												</p>
+												<Button
+													onClick={runPolicyCheck}
+													size="sm"
+													additionalClassName={`rounded-lg text-sm flex flex-row items-center justify-center border dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 max-h-fit
+														${(policyCheckStatus === 'idle' || policyCheckStatus === 'checking')
+															? 'border-primary-light text-primary-light dark:border-white text-gray-700 dark:text-white'
+															: (policyViolations.length === 0
+																	? 'border-green-600 text-green-600 dark:border-green-400 text-green-400 dark:text-green-400'
+																	: 'border-red-600 text-red-600 dark:border-red-400 dark:text-red-400')}`}
+												>
+													<div className='flex flex-row items-center gap-2' >
+														{policyCheckStatus === 'idle' ? (
+															<>
+																<VscWorkspaceUnknown size={18} />
+																{t('selectCredentialPopup.trustCheckButton')}
+															</>
+														) : policyCheckStatus === 'checking' ? (
+															<>
+																<VscWorkspaceUnknown size={18} />
+																{t('selectCredentialPopup.trustCheckRunning')}
+															</>
+														) : policyCheckStatus === 'done' && (
+															<>
+																{policyViolations.length === 0 ? (
+																	<VscWorkspaceTrusted size={18} />
+																) : (
+																	<VscWorkspaceUntrusted size={18} />
+																)}
+																{t('selectCredentialPopup.trustReCheckButton')}
+															</>
+														)}
+													</div>
+												</Button>
+											</div>
+
+											<div>
+												{policyCheckStatus === 'done' && policyViolations.length === 0 && (
+													<p className="text-sm text-green-600 mt-1 dark:text-green-400">
+														{t('selectCredentialPopup.policyCheckSuccess', 'All requested credentials have at least one policy-conformant option.')}
+													</p>
+												)}
+
+												{policyCheckStatus === 'done' && policyViolations.length > 0 && (
+													<ul className="text-sm text-red-600 dark:text-red-400 list-disc ml-4 mt-1">
+														{policyViolations.map((v, i) => (
+															<li key={i}>
+																{v.descriptorId ? <strong>{v.descriptorId}: </strong> : null}
+																{v.message}
+															</li>
 														))}
 													</ul>
 												)}

@@ -194,6 +194,11 @@
 			"title": "Presentation Details"
 		}
 	},
+	"pagePending": {
+		"description": "View pending issuance requests",
+		"noFound": "No pending issuance requests found",
+		"title": "Pending issuance requests"
+	},
 	"pageSendCredentials": {
 		"description": "Search and choose a verifier to share credentials with",
 		"noFound": "No matching verifiers found.",
@@ -295,6 +300,11 @@
 		"errorMissingIssuerIdentifier": "Issuer identifier is missing.",
 		"errorNotSupportedCredentialType": "This type of credential is not supported."
 	},
+	"pendingTransactions": {
+		"subtitle": "Waiting for issuance to complete",
+		"title": "{{count}} pending credential(s)",
+		"view": "View details"
+	},
 	"pwaInstallPrompt": {
 		"button": {
 			"closeTitle": "Click to close the PWA Installation Prompt",
@@ -335,6 +345,9 @@
 		"baseTitle": "Send Credentials",
 		"credentialSelectTitle": "Click to select the {{friendlyName}}",
 		"nextButtonDisabledTitle": "You need to select a Credential to proceed",
+		"policyCheckDescription": "Check if the verifier provided the required attestation for issuers that mandate attestation-based disclosure.",
+		"policyCheckError": "Policy Check Error",
+		"policyCheckTitle": "Issuer Policy Conformance",
 		"previewTitle": "Preview",
 		"purpose": "Purpose: ",
 		"purposeNotSpecified": " Not specified by verifier",
@@ -344,6 +357,7 @@
 		"selectDescription": "Select the Credential you want to present.",
 		"selectTitle": "Select",
 		"signedDocuments": "Documents to be Signed: ",
+		"qcRequest": "This transaction requests the creation of signature certificates according to the Terms and Conditions (T&C) of the QTSP",
 		"specificClaimsRequested": "The verifier has requested specific claims of the credential.",
 		"summaryDescription": "You are about to share <strong>only the following fields</strong> from the selected credentials.",
 		"summaryTitle": "Summary",

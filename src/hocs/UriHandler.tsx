@@ -198,10 +198,10 @@ export const UriHandler = ({ children }) => {
 						}
 						return;
 					}
-					const { conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, presentationDefinition, dcqlQuery, parsedTransactionData } = result;
+					const { conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfo, presentationDefinition, dcqlQuery, parsedTransactionData} = result;
 					const jsonedMap = Object.fromEntries(conformantCredentialsMap);
-					console.log("Prompting for selection..")
-					return openID4VP.promptForCredentialSelection(jsonedMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, presentationDefinition, dcqlQuery, parsedTransactionData);
+					console.log("Prompting for selection..");
+					return openID4VP.promptForCredentialSelection(jsonedMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfo, presentationDefinition, dcqlQuery, parsedTransactionData);
 				}).then((selection) => {
 					if (!(selection instanceof Map)) {
 						return;
@@ -232,8 +232,10 @@ export const UriHandler = ({ children }) => {
 				setMessagePopup(true);
 			}
 		}
-		handle(url);
-	}, [url, t, isLoggedIn, setRedirectUri, vcEntityList, synced]);
+		if (getCalculatedWalletState()) {
+			handle(url);
+		}
+	}, [url, t, isLoggedIn, setRedirectUri, vcEntityList, synced, getCalculatedWalletState]);
 
 	useEffect(() => {
 		const params = new URLSearchParams(window.location.search);
