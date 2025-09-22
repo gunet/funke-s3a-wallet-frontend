@@ -107,7 +107,7 @@ export function useHttpProxy(): IHttpProxy {
 							response = {
 								data: {...response}
 							};
-							const responseHeader = response?.data?.header?.['content-type'];
+							const responseHeader = response?.data?.headers?.['content-type'];
 							if (responseHeader && responseHeader.trim().startsWith('application/json')) {
 								console.log("Response header: JSON");
 								response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
