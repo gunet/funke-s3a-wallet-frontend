@@ -109,6 +109,7 @@ export function useHttpProxy(): IHttpProxy {
 								data: {...response}
 							};
 							const responseHeader = response?.data?.headers?.['content-type'];
+							console.log("Content-Type parsed: ", responseHeader);
 							if (responseHeader && responseHeader.trim().startsWith('application/json')) {
 								console.log("Response header: JSON");
 								response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
@@ -245,8 +246,14 @@ export function useHttpProxy(): IHttpProxy {
 					response = {
 						data: { ...response }
 					};
-					// todo: assuming content type application/json
-					response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+					const responseHeader = response?.data?.headers?.['content-type'];
+					console.log("Content-Type parsed: ", responseHeader);
+					if (responseHeader && responseHeader.trim().startsWith('application/json')) {
+						console.log("Response header: JSON");
+						response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+					} else {
+						response.data.data = new TextDecoder().decode(response.data.data);
+					}
 				} else {
 					response = await axios.post(`${walletBackendServerUrl}/proxy`, {
 						headers: headers,

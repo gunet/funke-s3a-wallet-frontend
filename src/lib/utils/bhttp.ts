@@ -174,7 +174,11 @@ export function encodeIndeterminateLengthRequest(opts: {
 
 // --- Convenience: build headers from a JS object (lowercases keys) ---
 export function headersFromObject(obj: Record<string, string | Uint8Array>): Array<[string, string | Uint8Array]> {
-  return Object.entries(obj).map(([k, v]) => [k.toLowerCase(), v]);
+	if (obj) {
+		return Object.entries(obj).map(([k, v]) => [k.toLowerCase(), v]);
+	} else {
+		return [];
+	}
 }
 
 const td = new TextDecoder();
