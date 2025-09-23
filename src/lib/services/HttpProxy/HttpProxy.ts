@@ -1,17 +1,16 @@
-import { useMemo, useRef, useContext, useEffect } from 'react';
+import { useMemo, useRef, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { IHttpProxy } from '../../interfaces/IHttpProxy';
 import StatusContext from '@/context/StatusContext';
 import { addItem, getItem, removeItem } from '@/indexedDB';
 import { encryptedHttpRequest, fetchKeyConfig } from '@/lib/utils/ohttpHelpers';
 import { OHTTP_KEY_CONFIG, OHTTP_RELAY } from "@/config";
+import SessionContext from '@/context/SessionContext';
 
 // @ts-ignore
 const walletBackendServerUrl = import.meta.env.VITE_WALLET_BACKEND_URL;
 const inFlightRequests = new Map<string, Promise<any>>();
 const TIMEOUT = 100*1000;
-
-const useOblivious = true;
 
 const parseCacheControl = (header: string) =>
 	Object.fromEntries(
@@ -26,7 +25,21 @@ const parseCacheControl = (header: string) =>
 
 export function useHttpProxy(): IHttpProxy {
 	const { isOnline } = useContext(StatusContext);
+	const { keystore } = useContext(SessionContext);
+
 	const isOnlineRef = useRef(isOnline);
+	const { getCalculatedWalletState } = keystore;
+
+	const settingsUseOblivious = useCallback(async (): Promise<boolean | null> => {
+		if (!getCalculatedWalletState) {
+			return null;
+		}
+		const S = getCalculatedWalletState();
+		if (!S) {
+			return null;
+		}
+		return S.settings['useOblivious'] === "true";
+	}, [getCalculatedWalletState]);
 
 	useEffect(() => {
 		isOnlineRef.current = isOnline;
@@ -88,7 +101,7 @@ export function useHttpProxy(): IHttpProxy {
 			const requestPromise = (async () => {
 				try {
 					let response;
-					if (useOblivious) {
+					if (await settingsUseOblivious()) {
 						console.log("Using oblivious");
 						// fetch keys - TODO: this should not happen per request
 						const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
@@ -231,7 +244,7 @@ export function useHttpProxy(): IHttpProxy {
 		): Promise<{ status: number; headers: Record<string, unknown>; data: unknown }> {
 			let response;
 			try {
-				if (useOblivious) {
+				if (await settingsUseOblivious()) {
 					console.log("Using oblivious");
 					// fetch keys - TODO: this should not happen per request
 					const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
