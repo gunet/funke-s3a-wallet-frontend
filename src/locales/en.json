@@ -242,7 +242,7 @@
 			"description": "Select a private gateway to use Oblivious HTTP",
 			"disabled": "Do not use Oblivious HTTP",
 			"cloudflare": "Open Source Cloudflare client",
-			"successMessage": "Oblivious HTTP settings saved"
+			"successMessage": "Saved"
 		},
 		"passkeyItem": {
 			"canEncrypt": "Can Encrypt",
