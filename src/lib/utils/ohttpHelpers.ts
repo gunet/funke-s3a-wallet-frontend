@@ -259,9 +259,6 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 		body = typeof requestParams?.body === 'string' ? new TextEncoder().encode(requestParams.body) : new Uint8Array(0);
 	}
 
-	console.log("body=");
-	console.log(body);
-
 	const targetUrl = new URL(requestParams.url);
 
 	const req = encodeKnownLengthRequest({
@@ -312,7 +309,5 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 	console.log(JSON.stringify(requestParams));
 	console.log("OHTTP Response Decoded:");
 	console.log(decodedResponse);
-	console.log("OHTTP response body text");
-	console.log(bodyText);
 	return decodedResponse;
 }

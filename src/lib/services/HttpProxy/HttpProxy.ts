@@ -125,7 +125,6 @@ export function useHttpProxy(): IHttpProxy {
 							const responseHeader = response?.data?.headers?.['content-type'];
 							console.log("Content-Type parsed: ", responseHeader);
 							if (responseHeader && responseHeader.trim().startsWith('application/json')) {
-								console.log("Response header: JSON");
 								response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
 							} else {
 								response.data.data = new TextDecoder().decode(response.data.data);
@@ -264,7 +263,6 @@ export function useHttpProxy(): IHttpProxy {
 					const responseHeader = response?.data?.headers?.['content-type'];
 					console.log("Content-Type parsed: ", responseHeader);
 					if (responseHeader && responseHeader.trim().startsWith('application/json')) {
-						console.log("Response header: JSON");
 						response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
 					} else {
 						response.data.data = new TextDecoder().decode(response.data.data);
