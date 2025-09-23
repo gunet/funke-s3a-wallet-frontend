@@ -1,8 +1,12 @@
-import { useMemo, useRef, useContext, useEffect } from 'react';
+import { useMemo, useRef, useContext, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { IHttpProxy } from '../../interfaces/IHttpProxy';
 import StatusContext from '@/context/StatusContext';
 import { addItem, getItem, removeItem } from '@/indexedDB';
+import { encryptedHttpRequest, fetchKeyConfig } from '@/lib/utils/ohttpHelpers';
+import { OHTTP_KEY_CONFIG, OHTTP_RELAY } from "@/config";
+import SessionContext from '@/context/SessionContext';
+
 // @ts-ignore
 const walletBackendServerUrl = import.meta.env.VITE_WALLET_BACKEND_URL;
 const inFlightRequests = new Map<string, Promise<any>>();
@@ -21,7 +25,21 @@ const parseCacheControl = (header: string) =>
 
 export function useHttpProxy(): IHttpProxy {
 	const { isOnline } = useContext(StatusContext);
+	const { keystore } = useContext(SessionContext);
+
 	const isOnlineRef = useRef(isOnline);
+	const { getCalculatedWalletState } = keystore;
+
+	const settingsUseOblivious = useCallback(async (): Promise<boolean | null> => {
+		if (!getCalculatedWalletState) {
+			return null;
+		}
+		const S = getCalculatedWalletState();
+		if (!S) {
+			return null;
+		}
+		return S.settings['useOblivious'] === "true";
+	}, [getCalculatedWalletState]);
 
 	useEffect(() => {
 		isOnlineRef.current = isOnline;
@@ -82,18 +100,51 @@ export function useHttpProxy(): IHttpProxy {
 
 			const requestPromise = (async () => {
 				try {
-					const response = await axios.post(`${walletBackendServerUrl}/proxy`, {
-						headers,
-						url,
-						method: 'get',
-					}, {
-						timeout: TIMEOUT,
-						headers: {
-							Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken')!),
-						},
-						...(isBinaryRequest && { responseType: 'arraybuffer' }),
+					let response;
+					const shouldUseOblivious = await settingsUseOblivious();
+					if (shouldUseOblivious) {
+						console.log("Using oblivious");
+						// fetch keys - TODO: this should not happen per request
+						const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
+						console.log(keyConfig);
+						response = await encryptedHttpRequest(OHTTP_RELAY, keyConfig, {
+							method: 'GET',
+							headers,
+							url,
+						})
+						response.data = response.body;
+						if (isBinaryRequest) {
+							response = {
+								...response,
+								data: [...response.body] //ab
+							}
+						} else {
+							response = {
+								data: {...response}
+							};
+							const responseHeader = response?.data?.headers?.['content-type'];
+							console.log("Content-Type parsed: ", responseHeader);
+							if (responseHeader && responseHeader.trim().startsWith('application/json')) {
+								response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+							} else {
+								response.data.data = new TextDecoder().decode(response.data.data);
+							}
+						}
+					} else {
+						response = await axios.post(`${walletBackendServerUrl}/proxy`, {
+							headers,
+							url,
+							method: 'get',
+						}, {
+							timeout: TIMEOUT,
+							headers: {
+								Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken')!),
+							},
+							...(isBinaryRequest && { responseType: 'arraybuffer' }),
+						}
+						);
 					}
-					);
+
 
 					const res = response.data;
 
@@ -191,20 +242,48 @@ export function useHttpProxy(): IHttpProxy {
 			body: any,
 			headers: Record<string, string>
 		): Promise<{ status: number; headers: Record<string, unknown>; data: unknown }> {
+			let response;
 			try {
-				const response = await axios.post(`${walletBackendServerUrl}/proxy`, {
-					headers: headers,
-					url: url,
-					method: 'post',
-					data: body,
-				}, {
-					timeout: TIMEOUT,
-					headers: {
-						Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken'))
+				const shouldUseOblivious = await settingsUseOblivious();
+				if (shouldUseOblivious) {
+					console.log("Using oblivious");
+					// fetch keys - TODO: this should not happen per request
+					const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
+					console.log(keyConfig);
+					response = await encryptedHttpRequest(OHTTP_RELAY, keyConfig, {
+						method: 'POST',
+						headers,
+						url,
+						body
+					})
+					response.data = response.body;
+					response = {
+						data: { ...response }
+					};
+					const responseHeader = response?.data?.headers?.['content-type'];
+					console.log("Content-Type parsed: ", responseHeader);
+					if (responseHeader && responseHeader.trim().startsWith('application/json')) {
+						response.data.data = JSON.parse(new TextDecoder().decode(response.data.data));
+					} else {
+						response.data.data = new TextDecoder().decode(response.data.data);
 					}
-				});
+				} else {
+					response = await axios.post(`${walletBackendServerUrl}/proxy`, {
+						headers: headers,
+						url: url,
+						method: 'post',
+						data: body,
+					}, {
+						timeout: TIMEOUT,
+						headers: {
+							Authorization: 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken'))
+						}
+					});
+				}
 				return response.data;
 			} catch (err) {
+				console.log("Post failed");
+				console.log(JSON.stringify(err, Object.getOwnPropertyNames(err)));
 				return {
 					data: err.response.data.data,
 					headers: err.response.data.headers,
