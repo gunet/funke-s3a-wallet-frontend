@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useContext, useEffect, useCallback, useRef, useMemo, useState } from 'react';
 
 import StatusContext from './StatusContext';
 import { useApi } from '../api';
@@ -13,7 +13,10 @@ export const SessionContextProvider = ({ children }) => {
 	const { isOnline } = useContext(StatusContext);
 	const api = useApi(isOnline);
 	const keystore = useLocalStorageKeystore(keystoreEvents);
+	const { getCalculatedWalletState } = keystore;
 	const isLoggedIn = useMemo(() => api.isLoggedIn() && keystore.isOpen(), [keystore, api]);
+
+	const [walletStateLoaded, setWalletStateLoaded] = useState<boolean>(false);
 
 	// A unique id for each logged in tab
 	const [globalTabId, setGlobalTabId, clearGlobalTabId] = useLocalStorage<string | null>("globalTabId", null);
@@ -60,6 +63,13 @@ export const SessionContextProvider = ({ children }) => {
 		};
 	}, []);
 
+	useEffect(() => {
+		const S = getCalculatedWalletState();
+		if (S) {
+			setWalletStateLoaded(true);
+		}
+	}, [getCalculatedWalletState]);
+
 	const value: SessionContextValue = useMemo(() => ({
 		api,
 		isLoggedIn: isLoggedIn,
@@ -74,7 +84,7 @@ export const SessionContextProvider = ({ children }) => {
 	}, [globalTabId, tabId, clearSession, api, keystore]);
 
 
-	if (api.isLoggedIn() === true && keystore.isOpen() === false) {
+	if ((api.isLoggedIn() === true && (keystore.isOpen() === false || !walletStateLoaded))) {
 		return <></>
 	}
 	return (

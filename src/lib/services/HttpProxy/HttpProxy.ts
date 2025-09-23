@@ -101,7 +101,8 @@ export function useHttpProxy(): IHttpProxy {
 			const requestPromise = (async () => {
 				try {
 					let response;
-					if (await settingsUseOblivious()) {
+					const shouldUseOblivious = await settingsUseOblivious();
+					if (shouldUseOblivious) {
 						console.log("Using oblivious");
 						// fetch keys - TODO: this should not happen per request
 						const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
@@ -244,7 +245,8 @@ export function useHttpProxy(): IHttpProxy {
 		): Promise<{ status: number; headers: Record<string, unknown>; data: unknown }> {
 			let response;
 			try {
-				if (await settingsUseOblivious()) {
+				const shouldUseOblivious = await settingsUseOblivious();
+				if (shouldUseOblivious) {
 					console.log("Using oblivious");
 					// fetch keys - TODO: this should not happen per request
 					const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
