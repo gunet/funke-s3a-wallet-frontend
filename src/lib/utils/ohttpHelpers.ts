@@ -266,9 +266,9 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 
 	const req = encodeKnownLengthRequest({
 		method: requestParams.method,
-    scheme: targetUrl.protocol.replace(":", ""),
-    authority: targetUrl.host,
-    path: targetUrl.pathname + targetUrl.search,
+		scheme: targetUrl.protocol.replace(":", ""),
+		authority: targetUrl.host,
+		path: targetUrl.pathname + targetUrl.search,
 		headers: headersFromObject(requestParams.headers),
 		body,                 // <— known-length body
 		// trailers: []       // trailers are known-length too; zero-length is encoded as 0
