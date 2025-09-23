@@ -238,11 +238,11 @@
 		"lockPasskeyManagementTitle": "Click to Lock passkey management",
 		"noOtherPasskeys": "There are no other passkeys in this account.",
 		"oblivious": {
-			"title": "Oblivious HTTP",
+			"cloudflare": "Open Source Cloudflare client",
 			"description": "Select a private gateway to use Oblivious HTTP",
 			"disabled": "Do not use Oblivious HTTP",
-			"cloudflare": "Open Source Cloudflare client",
-			"successMessage": "Saved"
+			"successMessage": "Saved",
+			"title": "Oblivious HTTP"
 		},
 		"passkeyItem": {
 			"canEncrypt": "Can Encrypt",
@@ -358,13 +358,13 @@
 		"previewTitle": "Preview",
 		"purpose": "Purpose: ",
 		"purposeNotSpecified": " Not specified by verifier",
+		"qcRequest": "This transaction requests the creation of signature certificates according to the Terms and Conditions (T&C) of the QTSP",
 		"request": "Request:",
 		"requestedCredentialsFieldsTitle": "Requested fields:",
 		"requestingParty": "Requesting Party: ",
 		"selectDescription": "Select the Credential you want to present.",
 		"selectTitle": "Select",
 		"signedDocuments": "Documents to be Signed: ",
-		"qcRequest": "This transaction requests the creation of signature certificates according to the Terms and Conditions (T&C) of the QTSP",
 		"specificClaimsRequested": "The verifier has requested specific claims of the credential.",
 		"summaryDescription": "You are about to share <strong>only the following fields</strong> from the selected credentials.",
 		"summaryTitle": "Summary",

@@ -217,11 +217,11 @@
 		"lockPasskeyManagementTitle": "Κάντε κλικ για να κλειδώσετε τη διαχείριση κλειδιών πρόσβασης",
 		"noOtherPasskeys": "Δεν υπάρχουν άλλα κλειδιά πρόσβασης σε αυτόν τον λογαριασμό.",
 		"oblivious": {
-			"title": "Oblivious HTTP",
+			"cloudflare": "Cloudflare πύλη ανοιχτού κώδικα",
 			"description": "Επιλογή πύλης για χρήση Oblivious HTTP",
 			"disabled": "Χωρίς χρήση Oblivious HTTP",
-			"cloudflare": "Cloudflare πύλη ανοιχτού κώδικα",
-			"successMessage": "Αποθηκεύτηκε"
+			"successMessage": "Αποθηκεύτηκε",
+			"title": "Oblivious HTTP"
 		},
 		"passkeyItem": {
 			"canEncrypt": "Μπορεί να Κρυπτογραφήσει",
