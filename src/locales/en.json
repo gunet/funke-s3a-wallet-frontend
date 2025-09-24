@@ -243,7 +243,7 @@
 		"lockPasskeyManagementTitle": "Click to Lock passkey management",
 		"noOtherPasskeys": "There are no other passkeys in this account.",
 		"oblivious": {
-			"cloudflare": "Open Source Cloudflare client",
+			"cloudflare": "Gateway A",
 			"description": "Select a private gateway to use Oblivious HTTP",
 			"disabled": "Do not use Oblivious HTTP",
 			"successMessage": "Saved",
