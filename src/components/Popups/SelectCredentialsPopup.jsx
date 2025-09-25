@@ -452,7 +452,7 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 										<div className='flex flex-col w-full'>
 											<div className='flex gap-2 mb-3 items-center justify-between'>
 												<p>
-													{t('selectCredentialPopup.trustCheckDescrition')}
+													{t('selectCredentialPopup.trustCheckDescription')}
 												</p>
 												<Button
 													onClick={runTrustCheck}
