@@ -199,6 +199,16 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 		setTrustCheckStatus('done');
 	};
 
+	const hasDisclosurePolicy =
+		popupState?.options?.conformantCredentialsMap !== undefined &&
+		Object.values(popupState.options.conformantCredentialsMap).some(({ credentials }) =>
+			vcEntityList.some(
+				vc =>
+					credentials.includes(vc.batchId) &&
+					vc.parsedCredential?.metadata?.credential?.disclosurePolicy
+			)
+		);
+
 	const runPolicyCheck = async () => {
 		setPolicyCheckStatus('checking');
 		try {
@@ -439,8 +449,8 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 										{t('selectCredentialPopup.trustCheckTitle')}
 									</span>
 									<div className="flex w-full border border-gray-300 dark:border:gray-600 rounded-md p-2 max-h-[13rem] overflow-y-auto">
-										<div className='flex flex-col'>
-											<div className='flex gap-2 mb-3 items-center'>
+										<div className='flex flex-col w-full'>
+											<div className='flex gap-2 mb-3 items-center justify-between'>
 												<p>
 													{t('selectCredentialPopup.trustCheckDescrition')}
 												</p>
@@ -501,14 +511,14 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 									</div>
 								</div>
 							)}
-							{popupState.options.conformantCredentialsMap && (
+							{popupState.options.conformantCredentialsMap && hasDisclosurePolicy && (
 								<div className="pd-2 text-gray-700 text-sm dark:text-white mt-2">
 									<span className="text-primary text-sm font-bold dark:text-white block mb-1">
 										{t('selectCredentialPopup.policyCheckTitle')}
 									</span>
 									<div className="flex w-full border border-gray-300 dark:border:gray-600 rounded-md p-2 max-h-[13rem] overflow-y-auto">
-										<div className="flex flex-col">
-											<div className="flex gap-2 mb-3 items-center">
+										<div className="flex flex-col w-full">
+											<div className="flex gap-2 mb-3 items-center justify-between">
 												<p>
 													{t('selectCredentialPopup.policyCheckDescription')}
 												</p>
@@ -550,7 +560,7 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 											<div>
 												{policyCheckStatus === 'done' && policyViolations.length === 0 && (
 													<p className="text-sm text-green-600 mt-1 dark:text-green-400">
-														{t('selectCredentialPopup.policyCheckSuccess', 'All requested credentials have at least one policy-conformant option.')}
+														{t('selectCredentialPopup.policyCheckSuccess')}
 													</p>
 												)}
 
