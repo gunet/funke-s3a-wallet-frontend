@@ -8,6 +8,8 @@ import SessionContext, { SessionContextValue } from './SessionContext';
 import { useWalletStateCredentialsMigrationManager } from '@/services/WalletStateCredentialsMigrationManager';
 import { useWalletStatePresentationsMigrationManager } from '@/services/WalletStatePresentationsMigrationManager';
 import { useLocalStorage, useSessionStorage } from '@/hooks/useStorage';
+import { fetchKeyConfig, HpkeConfig } from '@/lib/utils/ohttpHelpers';
+import { OHTTP_KEY_CONFIG } from '@/config';
 
 export const SessionContextProvider = ({ children }) => {
 	const { isOnline } = useContext(StatusContext);
@@ -17,6 +19,7 @@ export const SessionContextProvider = ({ children }) => {
 	const isLoggedIn = useMemo(() => api.isLoggedIn() && keystore.isOpen(), [keystore, api]);
 
 	const [walletStateLoaded, setWalletStateLoaded] = useState<boolean>(false);
+	const [obliviousKeyConfig, setObliviousKeyConfig] = useState<HpkeConfig>(null);
 
 	// A unique id for each logged in tab
 	const [globalTabId, setGlobalTabId, clearGlobalTabId] = useLocalStorage<string | null>("globalTabId", null);
@@ -66,7 +69,19 @@ export const SessionContextProvider = ({ children }) => {
 	useEffect(() => {
 		const S = getCalculatedWalletState();
 		if (S) {
-			setWalletStateLoaded(true);
+			if (S.settings['useOblivious'] === "true") {
+				// To use oblivious, keys must be fetched.
+				// Delay setWalletStateLoaded till then.
+				async function fetchKeyConfigAndUpdate() {
+					const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
+					setObliviousKeyConfig(keyConfig);
+					setWalletStateLoaded(true);
+				}
+				fetchKeyConfigAndUpdate();
+			} else {
+				setObliviousKeyConfig(null);
+				setWalletStateLoaded(true);
+			}
 		}
 	}, [getCalculatedWalletState]);
 
@@ -75,6 +90,7 @@ export const SessionContextProvider = ({ children }) => {
 		isLoggedIn: isLoggedIn,
 		keystore,
 		logout,
+		obliviousKeyConfig
 	}), [api, keystore, logout, isLoggedIn]);
 
 	useEffect(() => {
