@@ -385,6 +385,7 @@
 	},
 	"sidebar": {
 		"navItemLogout": "Logout",
+		"obliviousEnabled": "Private requests with Oblivious HTTP enabled",
 		"poweredBy": "Powered by <docLinkWalletGithub>wwWallet</docLinkWalletGithub>",
 		"poweredByAriaLabel": "GitHub repository of wwWallet"
 	},

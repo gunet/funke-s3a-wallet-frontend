@@ -25,21 +25,9 @@ const parseCacheControl = (header: string) =>
 
 export function useHttpProxy(): IHttpProxy {
 	const { isOnline } = useContext(StatusContext);
-	const { keystore } = useContext(SessionContext);
+	const { obliviousKeyConfig } = useContext(SessionContext);
 
 	const isOnlineRef = useRef(isOnline);
-	const { getCalculatedWalletState } = keystore;
-
-	const settingsUseOblivious = useCallback(async (): Promise<boolean | null> => {
-		if (!getCalculatedWalletState) {
-			return null;
-		}
-		const S = getCalculatedWalletState();
-		if (!S) {
-			return null;
-		}
-		return S.settings['useOblivious'] === "true";
-	}, [getCalculatedWalletState]);
 
 	useEffect(() => {
 		isOnlineRef.current = isOnline;
@@ -101,11 +89,13 @@ export function useHttpProxy(): IHttpProxy {
 			const requestPromise = (async () => {
 				try {
 					let response;
-					const shouldUseOblivious = await settingsUseOblivious();
+					const shouldUseOblivious = obliviousKeyConfig !== null;
 					if (shouldUseOblivious) {
 						console.log("Using oblivious");
-						// fetch keys - TODO: this should not happen per request
-						const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
+						const keyConfig = obliviousKeyConfig;
+						if (keyConfig === null) {
+							throw new Error("Oblivious HTTP configuration error");
+						}
 						console.log(keyConfig);
 						response = await encryptedHttpRequest(OHTTP_RELAY, keyConfig, {
 							method: 'GET',
@@ -244,12 +234,13 @@ export function useHttpProxy(): IHttpProxy {
 		): Promise<{ status: number; headers: Record<string, unknown>; data: unknown }> {
 			let response;
 			try {
-				const shouldUseOblivious = await settingsUseOblivious();
+				const shouldUseOblivious = obliviousKeyConfig !== null;
 				if (shouldUseOblivious) {
 					console.log("Using oblivious");
-					// fetch keys - TODO: this should not happen per request
-					const keyConfig = await fetchKeyConfig(OHTTP_KEY_CONFIG);
-					console.log(keyConfig);
+					const keyConfig = obliviousKeyConfig;
+					if (keyConfig === null) {
+						throw new Error("Oblivious HTTP configuration error");
+					}
 					response = await encryptedHttpRequest(OHTTP_RELAY, keyConfig, {
 						method: 'POST',
 						headers,
