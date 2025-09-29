@@ -73,12 +73,17 @@ export async function checkIssuerPolicyConformance(opts: Options): Promise<Polic
 				if (!vi.credential_ids.includes(policyCred.id)) continue;
 			}
 
+			const ta = (policyCred as any)?.trusted_authorities;
+			const allowedAKIs = (ta?.type === "aki" && Array.isArray(ta.values)) ? ta.values : undefined;
+
+
 			const baseVerifyOpts: VerifyOpts = {
 				expectedFormat: policyCred.format,
 				expectTypContains:
 					policyCred.format === VerifiableCredentialFormat.DC_SDJWT
 						? expectedTypForDcSdJwt
 						: undefined,
+					allowedAuthorityKeyIdsHex: allowedAKIs,
 			};
 
 			// if issuer declared acceptable VCTs, accept any that matchesm, otherwise skip VCT check
