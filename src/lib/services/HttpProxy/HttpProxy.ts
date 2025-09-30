@@ -3,7 +3,7 @@ import axios from 'axios';
 import { IHttpProxy } from '../../interfaces/IHttpProxy';
 import StatusContext from '@/context/StatusContext';
 import { addItem, getItem, removeItem } from '@/indexedDB';
-import { encryptedHttpRequest } from '@/lib/utils/ohttpHelpers';
+import { encryptedHttpRequest, toArrayBuffer } from '@/lib/utils/ohttpHelpers';
 import { OHTTP_RELAY } from "@/config";
 import SessionContext from '@/context/SessionContext';
 import { toU8 } from '@/util';
@@ -122,7 +122,7 @@ export function useHttpProxy(): IHttpProxy {
 						if (isBinaryRequest) {
 							response = {
 								...response,
-								data: [...response.body] //ab
+								data: toArrayBuffer(response.body)
 							}
 						} else {
 							response = {
