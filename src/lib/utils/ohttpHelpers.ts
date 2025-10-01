@@ -285,7 +285,9 @@ export const encryptedHttpRequest = async (relayUrl: string, keysInfo: HpkeConfi
 
 	const res2 = await fetch(relayUrl, {
 		method: 'POST',
-		headers: { 'Content-Type': 'message/ohttp-req' },
+		headers: { 'Content-Type': 'message/ohttp-req',
+			'Authorization': 'Bearer ' + JSON.parse(sessionStorage.getItem('appToken'))
+		},
 		body: toArrayBuffer(encapsulatedRequest) as ArrayBuffer,
 	});
 
