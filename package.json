@@ -14,7 +14,7 @@
     "autoprefixer": "^10.4.14",
     "axios": "^1.4.0",
     "dcql": "^0.4.2",
-    "wallet-common": "git+https://github.com/wwWallet/wallet-common.git#674579c8d04f79558c74830aa2a594e7e70c47c3",
+    "wallet-common": "git+https://github.com/wwWallet/wallet-common.git#5e8209cccb6d55423e105beb1e507a7602cd022f",
     "cose-kit": "^1.7.1",
     "did-resolver": "^4.1.0",
     "firebase": "^10.1.0",
