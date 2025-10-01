@@ -70,7 +70,10 @@ export function generateManifest(env): Partial<ManifestOptions> {
 		"background_color": "#ffffff",
 		"scope": "/",
 		"dir": "ltr",
-		"lang": "en"
+		"lang": "en",
+		"launch_handler": {
+			"client_mode": "navigate-existing"
+		}
 	};
 }
 
