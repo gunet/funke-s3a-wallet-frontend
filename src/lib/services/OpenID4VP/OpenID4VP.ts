@@ -24,7 +24,27 @@ import { getLeastUsedCredentialInstance } from "../CredentialBatchHelper";
 import { WalletStateUtils } from "@/services/WalletStateUtils";
 import { TransactionDataResponse } from "./TransactionData/TransactionDataResponse/TransactionDataResponse";
 
-export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, showTransactionDataConsentPopup }: { showCredentialSelectionPopup: (conformantCredentialsMap: any, verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null, presentationDefinition: any, dcqlQuery: any, parsedTransactionData?: ParsedTransactionData[]) => Promise<Map<string, number>>, showStatusPopup: (message: { title: string, description: string }, type: 'error' | 'success') => Promise<void>, showTransactionDataConsentPopup: (options: Record<string, unknown>) => Promise<boolean> }): IOpenID4VP {
+export function useOpenID4VP({
+	showCredentialSelectionPopup,
+	showStatusPopup,
+	showTransactionDataConsentPopup,
+}: {
+	showCredentialSelectionPopup: (
+		conformantCredentialsMap: any,
+		verifierDomainName: string,
+		verifierPurpose: string,
+		verifierAttestationsJwt: string | null,
+		verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null,
+		presentationDefinition: any,
+		dcqlQuery: any,
+		parsedTransactionData?: ParsedTransactionData[],
+	) => Promise<Map<string, number>>,
+	showStatusPopup: (
+		message: { title: string, description: string },
+		type: 'error' | 'success',
+	) => Promise<void>,
+	showTransactionDataConsentPopup: (options: Record<string, unknown>) => Promise<boolean>,
+}): IOpenID4VP {
 
 	const openID4VPRelyingPartyStateRepository = useOpenID4VPRelyingPartyStateRepository();
 	const httpProxy = useHttpProxy();
@@ -71,8 +91,26 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 
 
 	const promptForCredentialSelection = useCallback(
-		async (conformantCredentialsMap: any, verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null, presentationDefinition: any, dcqlQuery: any, parsedTransactionData: ParsedTransactionData[]): Promise<Map<string, number>> => {
-			return showCredentialSelectionPopup(conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfo, presentationDefinition, dcqlQuery, parsedTransactionData);
+		async (
+			conformantCredentialsMap: any,
+			verifierDomainName: string,
+			verifierPurpose: string,
+			verifierAttestationsJwt: string | null,
+			verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null,
+			presentationDefinition: any,
+			dcqlQuery: any,
+			parsedTransactionData: ParsedTransactionData[],
+		): Promise<Map<string, number>> => {
+			return showCredentialSelectionPopup(
+				conformantCredentialsMap,
+				verifierDomainName,
+				verifierPurpose,
+				verifierAttestationsJwt,
+				verifierInfo,
+				presentationDefinition,
+				dcqlQuery,
+				parsedTransactionData,
+			);
 		},
 		[showCredentialSelectionPopup]
 	);
@@ -249,8 +287,7 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 					};
 				} else {
 					// --- SD-JWT shaping ---
-					const { signedClaims, error } = await parseCredential(vc);
-					if (error) throw error;
+					const { signedClaims } = await parseCredential(vc);
 					shaped.vct = signedClaims.vct;
 					shaped.claims = signedClaims;
 					shaped.cryptographic_holder_binding = true;
@@ -266,7 +303,7 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 		}
 		const parsedQuery = DcqlQuery.parse(dcqlJson);
 		DcqlQuery.validate(parsedQuery);
-		const result = await DcqlQuery.query(parsedQuery, shapedCredentials);
+		const result = DcqlQuery.query(parsedQuery, shapedCredentials);
 
 		const matches = result.credential_matches;
 
@@ -274,8 +311,8 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 			const match = matches[credId];
 			if (match?.success === false) {
 				match.failed_credentials.map((failedCreds) => {
-					if (!failedCreds.meta.success) {
-						console.error("DCQL metadata issues: ", failedCreds.meta.issues)
+					if (failedCreds.meta.success === false) {
+						console.error("DCQL metadata issues: ", failedCreds.meta.issues);
 					}
 					if (!failedCreds.claims.success) {
 						console.error("DCQL failed claims: ", failedCreds.claims)
@@ -823,7 +860,22 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 	}
 
 
-	const handleAuthorizationRequest = useCallback(async (url: string, vcEntityList: ExtendedVcEntity[]): Promise<{ conformantCredentialsMap: Map<string, any>; verifierDomainName: string, verifierPurpose: string, verifierAttestationsJwt: string | null, verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null, presentationDefinition: any, dcqlQuery: any, parsedTransactionData?: ParsedTransactionData } | { error: HandleAuthorizationRequestError }> => {
+	const handleAuthorizationRequest = useCallback(async (
+		url: string,
+		vcEntityList: ExtendedVcEntity[],
+	): Promise<
+		{
+			conformantCredentialsMap: Map<string, any>,
+			verifierDomainName: string,
+			verifierPurpose: string,
+			verifierAttestationsJwt: string | null,
+			verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null,
+			presentationDefinition: any,
+			dcqlQuery: any,
+			parsedTransactionData: ParsedTransactionData[] | null,
+		}
+		| { error: HandleAuthorizationRequestError }
+	> => {
 		let {
 			client_id,
 			response_uri,
@@ -850,7 +902,7 @@ export function useOpenID4VP({ showCredentialSelectionPopup, showStatusPopup, sh
 		let verifierAttestationsJwt: string | null = null;
 		let verifierInfo: Array<{ format: string, data: string, credential_ids?: string[] }> | null = null;
 
-		let parsedTransactionData: ParsedTransactionData | null = null;
+		let parsedTransactionData: ParsedTransactionData[] | null = null;
 		if (request_uri) {
 			try {
 				const result = await handleRequestUri(request_uri, httpProxy);
