@@ -1,3 +1,5 @@
+import { WalletStateSettings } from "@/services/WalletStateOperations";
+
 export type Verifier = {
 	id: number;
 	name: string;
@@ -45,7 +47,4 @@ export type WebauthnCredential = {
 	prfCapable: boolean,
 }
 
-export type UserSettings = {
-	openidRefreshTokenMaxAgeInSeconds: number;
-	useOblivious: boolean;
-}
+export type UserSettings = WalletStateSettings;

@@ -778,7 +778,7 @@ const Settings = () => {
 			try {
 				const response = await api.get('/user/session/account-info');
 				const s = keystore.getCalculatedWalletState();
-				const userData = {
+				const userData: UserData = {
 					...response.data,
 					settings: s.settings,
 				};
