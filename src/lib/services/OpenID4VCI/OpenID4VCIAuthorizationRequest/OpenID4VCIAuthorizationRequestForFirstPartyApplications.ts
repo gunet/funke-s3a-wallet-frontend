@@ -69,9 +69,9 @@ export function useOpenID4VCIAuthorizationRequestForFirstPartyApplications(openI
 							if ('error' in res) {
 								return;
 							}
-
-							const jsonedMap = Object.fromEntries(res.conformantCredentialsMap);
-							return openID4VP.promptForCredentialSelection(jsonedMap, config.credentialIssuerMetadata.credential_issuer, "");
+							const { conformantCredentialsMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfo, presentationDefinition, dcqlQuery, parsedTransactionData } = result;
+							const jsonedMap = Object.fromEntries(conformantCredentialsMap);
+							return openID4VP.promptForCredentialSelection(jsonedMap, verifierDomainName, verifierPurpose, verifierAttestationsJwt, verifierInfo, presentationDefinition, dcqlQuery, parsedTransactionData);
 						}).then((selectionMap) => {
 							return openID4VP.sendAuthorizationResponse(selectionMap, vcEntityList);
 						});
