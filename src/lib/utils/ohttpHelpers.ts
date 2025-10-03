@@ -2,6 +2,7 @@ import { CipherSuite, HkdfSha256, Aes128Gcm } from '@hpke/core'
 import { DhkemX25519HkdfSha256 } from '@hpke/dhkem-x25519'
 import axios from 'axios'
 import { decodeKnownLengthRequest, decodeKnownLengthResponse, encodeKnownLengthRequest, headersFromObject } from './bhttp';
+import { RequestHeaders } from '../interfaces/IHttpProxy';
 
 export type HpkeConfig = {
 	keyId: number;
@@ -18,7 +19,7 @@ type KeyConfig = { keyId: number; kemId: number; publicKey: Uint8Array; pairs: K
 export type HttpRequestParameters = {
 	method: "GET" | "POST",
 	url: string,
-	headers: Record<string, string | Uint8Array>,
+	headers: RequestHeaders,
 	body?: string | object
 }
 
