@@ -220,7 +220,7 @@ describe("WalletStateSchemaVersion2", () => {
 		const container: WalletStateContainer = jsonParseTaggedBinary("{\"lastEventHash\":\"\",\"events\":[{\"schemaVersion\":1,\"eventId\":3573925921,\"parentHash\":\"\",\"timestampSeconds\":0,\"type\":\"alter_settings\",\"settings\":{\"openidRefreshTokenMaxAgeInSeconds\":\"0\",\"foo\":\"bar\"}}],\"S\":{\"schemaVersion\":1,\"credentials\":[],\"presentations\":[],\"keypairs\":[],\"credentialIssuanceSessions\":[],\"settings\":{\"openidRefreshTokenMaxAgeInSeconds\":\"0\"}}}");
 		const container1: WalletStateContainer = jsonParseTaggedBinary("{\"lastEventHash\":\"\",\"events\":[{\"schemaVersion\":1,\"eventId\":3573925921,\"parentHash\":\"\",\"timestampSeconds\":0,\"type\":\"alter_settings\",\"settings\":{\"openidRefreshTokenMaxAgeInSeconds\":\"0\",\"foo\":\"bar\"}},{\"schemaVersion\":1,\"eventId\":3420986692,\"parentHash\":\"dd40b27e896926a03b47948bf953f97d336d868764e61f738142d641f7d87094\",\"timestampSeconds\":10,\"type\":\"alter_settings\",\"settings\":{\"openidRefreshTokenMaxAgeInSeconds\":\"0\",\"foo\":\"boo\"}}],\"S\":{\"schemaVersion\":1,\"credentials\":[],\"presentations\":[],\"keypairs\":[],\"credentialIssuanceSessions\":[],\"settings\":{\"openidRefreshTokenMaxAgeInSeconds\":\"0\"}}}");
 
-		const defaultSettings: SchemaV2.WalletStateSettings = { openidRefreshTokenMaxAgeInSeconds: '0' };
+		const defaultSettings: SchemaV2.WalletStateSettings = { openidRefreshTokenMaxAgeInSeconds: '0', useOblivious: 'false' };
 		let container2 = await addAlterSettingsEvent(container, { ...defaultSettings, foo: "far" });
 		container2.events[1].timestampSeconds = 2;
 		container2 = await addAlterSettingsEvent(container2, { ...defaultSettings, foo: "zoo" });
