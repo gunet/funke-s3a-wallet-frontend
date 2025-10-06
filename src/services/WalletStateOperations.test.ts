@@ -327,7 +327,7 @@ describe("The WalletStateOperations", () => {
 	});
 
 	it("mergeEventHistories overwrites conflicting alter_settings events with the latest one.", async () => {
-		const defaultSettings: WalletStateSettings = { openidRefreshTokenMaxAgeInSeconds: '0' };
+		const defaultSettings: WalletStateSettings = { openidRefreshTokenMaxAgeInSeconds: '0', useOblivious: 'false' };
 		let container: WalletStateContainer = WalletStateOperations.initialWalletStateContainer();
 		container = await WalletStateOperations.addAlterSettingsEvent(container, { ...defaultSettings, foo: "bar" });
 		last(container.events).timestampSeconds = 0;

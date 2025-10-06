@@ -186,6 +186,7 @@ export type WalletStateCredentialIssuanceSession = WalletState['credentialIssuan
 
 export interface WalletStateSettings {
 	openidRefreshTokenMaxAgeInSeconds: string,
+	useOblivious: string,
 	[other: string]: unknown,
 }
 
@@ -501,7 +502,7 @@ export namespace WalletStateOperations {
 
 	export function initialWalletStateContainer(): WalletStateContainer {
 		return {
-			S: { schemaVersion: SCHEMA_VERSION, credentials: [], presentations: [], keypairs: [], credentialIssuanceSessions: [], settings: { openidRefreshTokenMaxAgeInSeconds: '0', useOblivious: false } },
+			S: { schemaVersion: SCHEMA_VERSION, credentials: [], presentations: [], keypairs: [], credentialIssuanceSessions: [], settings: { openidRefreshTokenMaxAgeInSeconds: '0', useOblivious: 'false' } },
 			events: [],
 			lastEventHash: "",
 		}
