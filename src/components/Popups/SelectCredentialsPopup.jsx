@@ -41,7 +41,8 @@ const SelectableCredentialSlideCard = ({
 	vcEntity,
 	isActive,
 	isSelected,
-	onClick
+	onClick,
+	borderColor
 }) => {
 	const { t } = useTranslation();
 	const [imageLoaded, setImageLoaded] = useState(false);
@@ -71,6 +72,7 @@ const SelectableCredentialSlideCard = ({
 				className="w-full object-cover rounded-xl"
 				showRibbon={isActive}
 				onLoad={() => setImageLoaded(true)}
+				borderColor={borderColor}
 			/>
 
 			{imageLoaded && (
@@ -191,7 +193,9 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 	const [showFullPurpose, setShowFullPurpose] = useState(false);
 	const [selectedCredential, setSelectedCredential] = useState(null);
 	const screenType = useScreenType();
-	const [currentSlide, setCurrentSlide] = useState(1);
+	const [activeSlideIndexByKey, setActiveSlideIndexByKey] = useState({});
+	const currentKey = keys[currentIndex];
+	const currentSlide = activeSlideIndexByKey[currentKey] ?? 1;
 	const [currentSummarySlide, setCurrentSummarySlide] = useState(0);
 	const [trustViolations, setTrustViolations] = useState([]);
 	const [trustCheckStatus, setTrustCheckStatus] = useState('idle');
@@ -249,6 +253,21 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 		}
 	};
 
+	const handleSlideChange = (idx) => {
+		setActiveSlideIndexByKey(prev => ({ ...prev, [currentKey]: idx + 1 }));
+	};
+
+	useEffect(() => {
+		const selectedId = currentSelectionMap[currentKey];
+		if (selectedId && vcEntities?.length) {
+			const idx = vcEntities.findIndex(v => v.batchId === selectedId);
+			if (idx !== -1 && activeSlideIndexByKey[currentKey] !== idx + 1) {
+				setActiveSlideIndexByKey(prev => ({ ...prev, [currentKey]: idx + 1 }));
+			}
+		}
+		// run when step or its vcEntities change
+	}, [currentKey, vcEntities, currentSelectionMap, activeSlideIndexByKey]);
+
 	const requestedFieldsPerCredential = useMemo(() => {
 
 		if (!popupState?.options) return {};
@@ -268,7 +287,7 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 
 	const reinitialize = useCallback(() => {
 		setCurrentIndex(0);
-		setCurrentSlide(1);
+		setActiveSlideIndexByKey({});
 		setCurrentSelectionMap({});
 		setSelectedCredential(null);
 		setPopupState((current) => ({ ...current, isOpen: false }));
@@ -609,7 +628,7 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 						</p>
 						<div>
 						</div>
-						<div className={`${screenType === 'desktop' && 'm-auto max-w-[700px]'}`}>
+						<div key={keys[currentIndex]} className={`${screenType === 'desktop' && 'm-auto max-w-[700px]'}`}>
 							{vcEntities && vcEntities.length ? (
 								<Slider
 									items={vcEntities}
@@ -620,9 +639,11 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 											isActive={currentSlide === index + 1}
 											isSelected={selectedCredential === vcEntity.batchId}
 											onClick={handleClick}
+											borderColor={screenType === 'desktop' ? 'border-gray-50 dark:border-gray-700' : undefined}
 										/>
 									)}
-									onSlideChange={(currentIndex) => setCurrentSlide(currentIndex + 1)}
+									initialSlide={currentSlide}
+									onSlideChange={handleSlideChange}
 									className='xm:px-4 px-16 sm:px-24 md:px-8'
 								/>
 							) : (
@@ -665,47 +686,50 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 						})}
 
 						<div className={`${screenType === 'desktop' && 'max-w-[600px]'}`}>
-							<Slider
-								items={selectedVcEntities}
-								renderSlideContent={(vcEntity, i) => {
-									const descriptorId = Object.keys(currentSelectionMap).find(
-										(key) => currentSelectionMap[key] === vcEntity.batchId
-									);
+							<div className='py-[3px]'>
+								<Slider
+									items={selectedVcEntities}
+									renderSlideContent={(vcEntity, i) => {
+										const descriptorId = Object.keys(currentSelectionMap).find(
+											(key) => currentSelectionMap[key] === vcEntity.batchId
+										);
 
-									const fields = requestedFieldsPerCredential[descriptorId];
-									const hasValidPath = Array.isArray(fields) && fields[0]?.path[0];
+										const fields = requestedFieldsPerCredential[descriptorId];
+										const hasValidPath = Array.isArray(fields) && fields[0]?.path[0];
 
-									const requiredClaimPaths = (vcEntity.parsedCredential.metadata.credential?.TypeMetadata?.claims ?? [])
-										.filter(c => c?.required === true)
-										.map(c => normalizePath(c.path));
+										const requiredClaimPaths = (vcEntity.parsedCredential.metadata.credential?.TypeMetadata?.claims ?? [])
+											.filter(c => c?.required === true)
+											.map(c => normalizePath(c.path));
 
-									// Only merge when hasValidPath is true, otherwise leave undefined
-									const filterPaths = hasValidPath
-										? Array.from(
-											new Set([
-												...fields.map(f => JSON.stringify(normalizePath(f.path))),
-												...requiredClaimPaths.map(p => JSON.stringify(p))
-											])
-										).map(p => JSON.parse(p))
-										: undefined;
+										// Only merge when hasValidPath is true, otherwise leave undefined
+										const filterPaths = hasValidPath
+											? Array.from(
+												new Set([
+													...fields.map(f => JSON.stringify(normalizePath(f.path))),
+													...requiredClaimPaths.map(p => JSON.stringify(p))
+												])
+											).map(p => JSON.parse(p))
+											: undefined;
 
-									return (
-										<div className='py-1 w-full'>
-											<CredentialImage
-												vcEntity={vcEntity}
-												vcEntityInstances={vcEntity.instances}
-												parsedCredential={vcEntity.parsedCredential}
-												className="w-full object-cover rounded-xl"
-												showRibbon={currentSummarySlide === i}
-												filter={filterPaths}
-											/>
-										</div>
-									);
-								}}
-								onSlideChange={(index) => setCurrentSummarySlide(index)}
-								className='xm:px-4 px-16 sm:px-24 md:px-8'
-							/>
-
+										return (
+											<div className='w-full'>
+												<CredentialImage
+													vcEntity={vcEntity}
+													vcEntityInstances={vcEntity.instances}
+													parsedCredential={vcEntity.parsedCredential}
+													className="w-full object-cover rounded-xl"
+													showRibbon={currentSummarySlide === i}
+													filter={filterPaths}
+													borderColor={screenType === 'desktop' ? 'border-gray-50 dark:border-gray-700' : undefined}
+												/>
+											</div>
+										);
+									}}
+									initialSlide={currentSummarySlide + 1}
+									onSlideChange={(index) => setCurrentSummarySlide(index)}
+									className='xm:px-4 px-16 sm:px-24 md:px-8'
+								/>
+							</div>
 							{selectedVcEntities?.[currentSummarySlide] ? (
 								<div className="flex flex-wrap justify-center items-center my-2">
 									<CredentialInfo
@@ -732,9 +756,9 @@ function SelectCredentialsPopup({ popupState, setPopupState, showPopup, hidePopu
 			</div>
 
 			<div
-				className={`z-10 left-0 right-0 bg-white dark:bg-gray-800 shadow-2xl rounded-t-lg flex justify-between ${screenType === 'desktop'
-					? 'sticky bottom-0 px-4 py-3'
-					: 'fixed bottom-0 px-6 pb-4 pt-4'
+				className={`z-10 left-0 right-0 border-t border-gray-500/30 dark:border-white/30 shadow-2xl rounded-t-lg flex justify-between ${screenType === 'desktop'
+					? 'bg-gray-50 dark:bg-gray-700 sticky bottom-0 px-4 py-3'
+					: 'bg-gray-100 dark:bg-gray-900 fixed bottom-0 px-6 pb-4 pt-4'
 					}`}
 			>
 				<Button

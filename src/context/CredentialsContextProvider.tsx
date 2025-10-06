@@ -8,10 +8,10 @@ import CredentialsContext, { ExtendedVcEntity, Instance } from "./CredentialsCon
 import { VerifiableCredentialFormat } from "wallet-common/dist/types";
 import { useOpenID4VCIHelper } from "@/lib/services/OpenID4VCIHelper";
 import { ParsedCredential } from "wallet-common/dist/types";
-import { WalletStateCredential } from '@/services/WalletStateOperations';
 import { useLocalStorage } from '@/hooks/useStorage';
 import { WalletStateUtils } from '@/services/WalletStateUtils';
 import axios from 'axios';
+import { CurrentSchema } from '@/services/WalletStateSchema';
 
 export type DcApiCredentialWrapperCommonSchema = {
 	id: number;
@@ -40,7 +40,8 @@ export const areCredentialsSimilar = (
 	return false;
 }
 
-type NativeWrapperUpdateCredentialsFn = (newList: DcApiCredentialWrapperCommonSchema[]) => void;
+
+type WalletStateCredential = CurrentSchema.WalletStateCredential;
 
 
 export const CredentialsContextProvider = ({ children }) => {
