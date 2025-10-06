@@ -1,4 +1,6 @@
-import { WalletStateSettings } from "@/services/WalletStateOperations";
+import { CurrentSchema } from "@/services/WalletStateSchema";
+
+type WalletStateSettings = CurrentSchema.WalletStateSettings;
 
 export type Verifier = {
 	id: number;
