@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useContext, useRef, useEffect } from 'react';
-import { getItem } from '../indexedDB';
 import SessionContext from './SessionContext';
-import { compareBy, reverse, toBase64 } from '../util';
+import { toBase64 } from '../util';
 import { initializeCredentialEngine } from "../lib/initializeCredentialEngine";
 import { CredentialVerificationError } from "wallet-common/dist/error";
 import { useHttpProxy } from "@/lib/services/HttpProxy/HttpProxy";
@@ -42,6 +41,7 @@ export const areCredentialsSimilar = (
 }
 
 type NativeWrapperUpdateCredentialsFn = (newList: DcApiCredentialWrapperCommonSchema[]) => void;
+
 
 export const CredentialsContextProvider = ({ children }) => {
 	const { api, keystore, isLoggedIn } = useContext(SessionContext);
@@ -308,7 +308,7 @@ export const CredentialsContextProvider = ({ children }) => {
 				if (
 					!prev ||
 					prev.length !== storedCredentials.length ||
-					prev.some((vc, i) => vc.id !== storedCredentials[i].id)
+					prev.some((vc, i) => vc.batchId !== storedCredentials[i].batchId)
 				) {
 					return storedCredentials;
 				}
