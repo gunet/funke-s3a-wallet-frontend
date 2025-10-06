@@ -1,11 +1,10 @@
-import { ParsedTransactionData } from "./parseTransactionData"
 import React from 'react';
 import { TransactionDataRequest } from "./TransactionDataRequest/TransactionDataRequestObject";
 import { useTranslation } from "react-i18next";
 import document from '../../../../assets/images/document.png';
 
 
-export const withTransactionData = (req: TransactionDataRequest) => {
+export const withTransactionData = (_req: TransactionDataRequest) => {
 	const TransactionDataComponent: React.FC = () => {
 		const { t } = useTranslation();
 

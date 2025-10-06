@@ -14,9 +14,12 @@ import { cborEncode, cborDecode, DataItem, getCborEncodeDecodeOptions, setCborEn
 import { DeviceResponse, MDoc } from "@auth0/mdl";
 import { SupportedAlgs } from "@auth0/mdl/lib/mdoc/model/types";
 import { COSEKeyToJWK } from "cose-kit";
-import { WalletState, WalletSessionEvent, WalletStateContainer, WalletStateOperations } from "./WalletStateOperations";
 import { withHintsFromAllowCredentials } from "@/util-webauthn";
-import { WalletStateUtils } from "./WalletStateUtils";
+import { addNewKeypairEvent, CurrentSchema, foldState, SchemaV1 } from "./WalletStateSchema";
+
+type WalletState = CurrentSchema.WalletState;
+type WalletStateContainer = CurrentSchema.WalletStateContainer;
+
 
 const keyDidResolver = KeyDidResolver.getResolver();
 const didResolver = new Resolver(keyDidResolver);
@@ -227,7 +230,7 @@ export function migrateV0PrivateData(privateData: KeystoreV0PrivateData | Privat
 
 export function migrateV1PrivateData(privateData: PrivateDataV1 | PrivateData): PrivateData {
 	if (isKeystoreV1PrivateData(privateData)) {
-		const initialWalletContainer = WalletStateOperations.initialWalletStateContainer();
+		const initialWalletContainer = SchemaV1.WalletStateOperations.initialWalletStateContainer();
 		initialWalletContainer.S.keypairs = Object.values(privateData.keypairs).map((keypair) => {
 			return { kid: keypair.kid, keypair: { ...keypair } };
 		});
@@ -370,7 +373,7 @@ export async function importMainKey(exportedMainKey: BufferSource): Promise<Cryp
 export async function openPrivateData(exportedMainKey: BufferSource, privateData: EncryptedContainer): Promise<[PrivateData, CryptoKey, WalletState]> {
 	const mainKey = await importMainKey(exportedMainKey);
 	const openedPrivateData = await decryptPrivateData(privateData.jwe, mainKey);
-	const calculatedState = WalletStateOperations.foldState(openedPrivateData);
+	const calculatedState = foldState(openedPrivateData);
 	return [openedPrivateData, mainKey, calculatedState];
 }
 
@@ -996,7 +999,7 @@ export async function init(
 ): Promise<UnlockSuccess> {
 	const privateData: EncryptedContainer = {
 		...keyInfo,
-		jwe: await encryptPrivateData(WalletStateOperations.initialWalletStateContainer(), mainKey),
+		jwe: await encryptPrivateData(SchemaV1.WalletStateOperations.initialWalletStateContainer(), mainKey),
 	};
 	return await unlock(mainKey, privateData);
 }
@@ -1158,7 +1161,7 @@ async function addNewCredentialKeypairs(
 
 				// append events
 				for (const { kid, keypair } of keypairsWithPrivateKeys) {
-					privateData = await WalletStateOperations.addNewKeypairEvent(privateData, kid, keypair);
+					privateData = await addNewKeypairEvent(privateData, kid, keypair);
 				}
 
 				return {
@@ -1327,7 +1330,7 @@ export async function generateDeviceResponse([privateData, mainKey, calculatedSt
 		mdocGeneratedNonce
 	);
 
-	const uint8ArrayToHexString = (uint8Array: any) => Array.from(uint8Array, byte => byte.toString(16).padStart(2, '0')).join('');
+	const uint8ArrayToHexString = (uint8Array: Uint8Array) => Array.from(uint8Array, byte => byte.toString(16).padStart(2, '0')).join('');
 	console.log("Session transcript bytes (HEX): ", uint8ArrayToHexString(new Uint8Array(sessionTranscriptBytes)));
 
 	const deviceResponseMDoc = await DeviceResponse.from(mdocCredential)

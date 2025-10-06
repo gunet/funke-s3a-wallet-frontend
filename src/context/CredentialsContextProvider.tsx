@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useContext, useRef, useEffect } from 'react';
-import { getItem } from '../indexedDB';
 import SessionContext from './SessionContext';
-import { compareBy, reverse, toBase64 } from '../util';
+import { toBase64 } from '../util';
 import { initializeCredentialEngine } from "../lib/initializeCredentialEngine";
 import { CredentialVerificationError } from "wallet-common/dist/error";
 import { useHttpProxy } from "@/lib/services/HttpProxy/HttpProxy";
@@ -9,10 +8,11 @@ import CredentialsContext, { ExtendedVcEntity, Instance } from "./CredentialsCon
 import { VerifiableCredentialFormat } from "wallet-common/dist/types";
 import { useOpenID4VCIHelper } from "@/lib/services/OpenID4VCIHelper";
 import { ParsedCredential } from "wallet-common/dist/types";
-import { WalletStateCredential } from '@/services/WalletStateOperations';
+
 import { useLocalStorage } from '@/hooks/useStorage';
 import { WalletStateUtils } from '@/services/WalletStateUtils';
 import axios from 'axios';
+import { CurrentSchema } from '@/services/WalletStateSchema';
 
 export type DcApiCredentialWrapperCommonSchema = {
 	id: number;
@@ -41,7 +41,9 @@ export const areCredentialsSimilar = (
 	return false;
 }
 
-type NativeWrapperUpdateCredentialsFn = (newList: DcApiCredentialWrapperCommonSchema[]) => void;
+
+
+type WalletStateCredential = CurrentSchema.WalletStateCredential;
 
 export const CredentialsContextProvider = ({ children }) => {
 	const { api, keystore, isLoggedIn } = useContext(SessionContext);
@@ -308,7 +310,7 @@ export const CredentialsContextProvider = ({ children }) => {
 				if (
 					!prev ||
 					prev.length !== storedCredentials.length ||
-					prev.some((vc, i) => vc.id !== storedCredentials[i].id)
+					prev.some((vc, i) => vc.batchId !== storedCredentials[i].batchId)
 				) {
 					return storedCredentials;
 				}
