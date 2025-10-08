@@ -126,11 +126,12 @@ const CredentialLayout = ({ children, title = null, displayCredentialInfo = null
 
 					)}
 				</div>
-				{screenType === 'mobile' && vcEntity.instances?.length > 1 && (
+				{screenType === 'mobile' && (
 					<div className='flex flex-start flex-col gap-1'>
 						<p className='text-xl font-bold text-primary dark:text-white'>{credentialName}</p>
-						<UsageStats zeroSigCount={zeroSigCount} sigTotal={sigTotal} screenType={screenType} t={t} />
-
+						{vcEntity.instances?.length > 1 && (
+							<UsageStats zeroSigCount={zeroSigCount} sigTotal={sigTotal} screenType={screenType} t={t} />
+						)}
 					</div>
 				)}
 			</div>
