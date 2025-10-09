@@ -283,7 +283,7 @@
 		"lockSensitiveTitle": "Click to lock sensitive actions",
 		"noOtherPasskeys": "There are no other passkeys in this account.",
 		"oblivious": {
-			"cloudflare": "Gateway A",
+			"cloudflare": "GUnet Gateway",
 			"description": "Select a private gateway to use Oblivious HTTP",
 			"disabled": "Do not use Oblivious HTTP",
 			"successMessage": "Saved",

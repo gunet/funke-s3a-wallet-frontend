@@ -214,7 +214,7 @@
 		"description": "Δείτε πληροφορίες λογαριασμού και διαχειριστείτε κλειδιά πρόσβασης",
 		"noOtherPasskeys": "Δεν υπάρχουν άλλα κλειδιά πρόσβασης σε αυτόν τον λογαριασμό.",
 		"oblivious": {
-			"cloudflare": "Πύλη Α",
+			"cloudflare": "Πύλη GUnet",
 			"description": "Επιλογή πύλης για χρήση Oblivious HTTP",
 			"disabled": "Χωρίς χρήση Oblivious HTTP",
 			"successMessage": "Αποθηκεύτηκε",
