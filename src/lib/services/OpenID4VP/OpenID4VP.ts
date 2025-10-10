@@ -24,6 +24,7 @@ import { getLeastUsedCredentialInstance } from "../CredentialBatchHelper";
 import { WalletStateUtils } from "@/services/WalletStateUtils";
 import { TransactionDataResponse } from "./TransactionData/TransactionDataResponse/TransactionDataResponse";
 import { ClaimPath, presentSplitBbs } from "wallet-common/dist/jpt";
+import { WalletStateCredential } from "@/services/WalletStateSchemaVersion1";
 
 export function useOpenID4VP({
 	showCredentialSelectionPopup,
@@ -51,7 +52,7 @@ export function useOpenID4VP({
 	const httpProxy = useHttpProxy();
 	const { parseCredential } = useContext(CredentialsContext);
 	const { keystore, api } = useContext(SessionContext);
-
+	const { getCalculatedWalletState } = keystore;
 	const { t } = useTranslation();
 	const { post } = api;
 
@@ -496,29 +497,23 @@ export function useOpenID4VP({
 		let apu = undefined;
 		let apv = undefined;
 
-		const allSelectedCredentialBatchIds = Array.from(selectionMap.values());
-
-		const credentialsFilteredByUsage = await Promise.all(allSelectedCredentialBatchIds.map(async (batchId) =>
-			getLeastUsedCredentialInstance(batchId, vcEntityList)
-		));
-		console.log("Sig count: ", credentialsFilteredByUsage[0].sigCount)
-
-
-		const filteredVCEntities = credentialsFilteredByUsage.filter((vc) =>
-			allSelectedCredentialBatchIds.includes(vc.batchId)
-		);
-
 		let selectedVCs = [];
 		let generatedVPs = [];
-		let originalVCs: ExtendedVcEntity[] = [];
+		let originalVCs: WalletStateCredential[] = [];
 		const descriptorMap = [];
 
 		let i = 0;
-
+		const walletState = keystore.getCalculatedWalletState();
+		if (!walletState) {
+			throw new Error("Empty wallet state");
+		}
 		for (const [descriptor_id, batchId] of selectionMap) {
-			const vcEntity = filteredVCEntities.find(vc => vc.batchId === batchId);
-			console.log('vcEntity: ', vcEntity)
-			if (vcEntity.format === VerifiableCredentialFormat.DC_SDJWT || vcEntity.format === VerifiableCredentialFormat.VC_SDJWT) {
+			const credential = await getLeastUsedCredentialInstance(batchId, vcEntityList, walletState);
+			if (!credential) {
+				continue;
+			}
+
+			if (credential.format === VerifiableCredentialFormat.DC_SDJWT || credential.format === VerifiableCredentialFormat.VC_SDJWT) {
 				const descriptor = presentationDefinition.input_descriptors.find(desc => desc.id === descriptor_id);
 				const allPaths = descriptor.constraints.fields
 					.map(field => field.path)
@@ -530,9 +525,9 @@ export function useOpenID4VP({
 					return crypto.subtle.digest(alg, encoded).then(v => new Uint8Array(v));
 				};
 
-				const sdJwt = await SDJwt.fromEncode(vcEntity.data, hasher);
-				const presentation = (vcEntity.data.split("~").length - 1) > 1 ?
-					await sdJwt.present(presentationFrame, hasher) : vcEntity.data;
+				const sdJwt = await SDJwt.fromEncode(credential.data, hasher);
+				const presentation = (credential.data.split("~").length - 1) > 1 ?
+					await sdJwt.present(presentationFrame, hasher) : credential.data;
 
 				let transactionDataResponseParams;
 				if (transaction_data) {
@@ -551,21 +546,21 @@ export function useOpenID4VP({
 				if (selectionMap.size > 1) {
 					descriptorMap.push({
 						id: descriptor_id,
-						format: vcEntity.format,
+						format: credential.format,
 						path: `$[${i++}]`
 					});
 				}
 				else {
 					descriptorMap.push({
 						id: descriptor_id,
-						format: vcEntity.format,
+						format: credential.format,
 						path: `$`
 					});
 				}
 
-				originalVCs.push(vcEntity);
+				originalVCs.push(credential);
 
-			} else if (vcEntity.format === VerifiableCredentialFormat.DC_JPT) {
+			} else if (credential.format === VerifiableCredentialFormat.DC_JPT) {
 				const descriptor = presentationDefinition.input_descriptors.find(desc => desc.id === descriptor_id);
 				const allPaths = descriptor.constraints.fields.flatMap(field => field.path);
 				let presentationPaths = dcqlClaimPathsFromPresentationDefinitionPaths(allPaths);
@@ -581,7 +576,7 @@ export function useOpenID4VP({
 				}
 
 				const vpjpt = await presentSplitBbs(
-					vcEntity.data,
+					credential.data,
 					{
 						alg: 'experimental/SplitBBSv2.1',
 						nonce,
@@ -589,7 +584,7 @@ export function useOpenID4VP({
 						...transactionDataResponseParams,
 					},
 					presentationPaths,
-					(t2bar, c_host) => keystore.signSplitBbs(vcEntity.data, t2bar, c_host),
+					(t2bar, c_host) => keystore.signSplitBbs(credential.data, t2bar, c_host),
 				);
 				selectedVCs.push(vpjpt);
 				generatedVPs.push(vpjpt);
@@ -597,25 +592,25 @@ export function useOpenID4VP({
 				if (selectionMap.size > 1) {
 					descriptorMap.push({
 						id: descriptor_id,
-						format: vcEntity.format,
+						format: credential.format,
 						path: `$[${i++}]`
 					});
 				}
 				else {
 					descriptorMap.push({
 						id: descriptor_id,
-						format: vcEntity.format,
+						format: credential.format,
 						path: `$`
 					});
 				}
 
-				originalVCs.push(vcEntity);
+				originalVCs.push(credential);
 
-			} else if (vcEntity.format === VerifiableCredentialFormat.MSO_MDOC) {
+			} else if (credential.format === VerifiableCredentialFormat.MSO_MDOC) {
 				console.log("Response uri = ", response_uri);
 
 				const descriptor = presentationDefinition.input_descriptors.filter((desc) => desc.id === descriptor_id)[0];
-				const credentialBytes = base64url.decode(vcEntity.data);
+				const credentialBytes = base64url.decode(credential.data);
 				const issuerSigned = cborDecode(credentialBytes);
 
 				// According to ISO 23220-4: The value of input descriptor id should be the doctype
@@ -649,10 +644,10 @@ export function useOpenID4VP({
 					format: VerifiableCredentialFormat.MSO_MDOC,
 					path: `$`
 				});
-				originalVCs.push(vcEntity);
+				originalVCs.push(credential);
 
 			} else {
-				throw new Error("Unimplemented credential format: " + vcEntity.format);
+				throw new Error("Unimplemented credential format: " + credential.format);
 			}
 		}
 
@@ -689,7 +684,7 @@ export function useOpenID4VP({
 
 		const credentialIdentifiers = originalVCs.map(vc => vc.batchId);
 
-		return { formData, credentialIdentifiers, generatedVPs, presentationSubmission, filteredVCEntities };
+		return { formData, credentialIdentifiers, generatedVPs, presentationSubmission, filteredVCEntities: originalVCs };
 	}
 
 	function convertDcqlToPresentationDefinition(dcql_query) {
@@ -752,24 +747,23 @@ export function useOpenID4VP({
 		let generatedVPs = [];
 		let originalVCs = [];
 
-		const allIds = Array.from(selectionMap.values());
-		const filtered = vcEntityList.filter(vc =>
-			allIds.includes(vc.batchId)
-		);
-
-		for (const [selectionKey, batchId] of selectionMap.entries()) {
-			const vcEntity = filtered.find(v => v.batchId === batchId);
-			if (!vcEntity) continue;
+		const walletState = keystore.getCalculatedWalletState();
+		if (!walletState) {
+			throw new Error("Empty wallet state");
+		}
+		for (const [selectionKey, batchId] of selectionMap) {
+			const credential = await getLeastUsedCredentialInstance(batchId, vcEntityList, walletState);
+			if (!credential) continue;
 
 			if (
-				vcEntity.format === VerifiableCredentialFormat.VC_SDJWT ||
-				vcEntity.format === VerifiableCredentialFormat.DC_SDJWT
+				credential.format === VerifiableCredentialFormat.VC_SDJWT ||
+				credential.format === VerifiableCredentialFormat.DC_SDJWT
 			) {
 				const descriptor = dcql_query.credentials.find(c => c.id === selectionKey);
 				if (!descriptor) {
 					throw new Error(`No DCQL descriptor for id ${selectionKey}`);
 				}
-				const parsedCredential = await parseCredential(vcEntity);
+				const parsedCredential = await parseCredential(credential);
 				if (!("signedClaims" in parsedCredential)) {
 						throw new Error("Unexpected result format of parseCredential");
 				}
@@ -814,13 +808,13 @@ export function useOpenID4VP({
 					return crypto.subtle.digest(alg, bytes).then(buf => new Uint8Array(buf));
 				};
 
-				const sdJwt = await SDJwt.fromEncode(vcEntity.data, hasher);
-				const presentation = (vcEntity.data.split("~").length - 1) > 1
+				const sdJwt = await SDJwt.fromEncode(credential.data, hasher);
+				const presentation = (credential.data.split("~").length - 1) > 1
 					? await sdJwt.present(frame, hasher)
-					: vcEntity.data;
+					: credential.data;
 
 				const shaped = {
-					credential_format: vcEntity.format,
+					credential_format: credential.format,
 					vct: signedClaims.vct,
 					cryptographic_holder_binding: true,
 					claims: !descriptor.claims || descriptor.claims.length === 0
@@ -853,15 +847,15 @@ export function useOpenID4VP({
 
 				selectedVCs.push(presentation);
 				generatedVPs.push(vpjwt);
-				originalVCs.push(vcEntity);
+				originalVCs.push(credential);
 			}
 
-			else if (vcEntity.format === VerifiableCredentialFormat.DC_JPT) {
+			else if (credential.format === VerifiableCredentialFormat.DC_JPT) {
 				const descriptor = dcql_query.credentials.find(c => c.id === selectionKey);
 				if (!descriptor) {
 					throw new Error(`No DCQL descriptor for id ${selectionKey}`);
 				}
-				const parsedCredential = await parseCredential(vcEntity);
+				const parsedCredential = await parseCredential(credential);
 				if (!("signedJptClaims" in parsedCredential)) {
 						throw new Error("Unexpected result format of parseCredential");
 				}
@@ -913,7 +907,7 @@ export function useOpenID4VP({
 				}
 
 				const vpjpt = await presentSplitBbs(
-					vcEntity.data,
+					credential.data,
 					{
 						alg: 'experimental/SplitBBSv2.1',
 						nonce,
@@ -921,22 +915,22 @@ export function useOpenID4VP({
 						...transactionDataResponseParams,
 					},
 					paths,
-					(t2bar, c_host) => keystore.signSplitBbs(vcEntity.data, t2bar, c_host),
+					(t2bar, c_host) => keystore.signSplitBbs(credential.data, t2bar, c_host),
 				);
 
 				selectedVCs.push(vpjpt);
 				generatedVPs.push(vpjpt);
-				originalVCs.push(vcEntity);
+				originalVCs.push(credential);
 			}
 
-			else if (vcEntity.format === VerifiableCredentialFormat.MSO_MDOC) {
+			else if (credential.format === VerifiableCredentialFormat.MSO_MDOC) {
 				// Use DCQL ID (`selectionKey`) to find the descriptor
 				const descriptor = dcql_query.credentials.find(c => c.id === selectionKey);
 				if (!descriptor) {
 					throw new Error(`No DCQL descriptor for id ${selectionKey}`);
 				}
 				const descriptorId = descriptor.meta?.doctype_value!;
-				const credentialBytes = base64url.decode(vcEntity.data);
+				const credentialBytes = base64url.decode(credential.data);
 				const issuerSignedPayload = cborDecode(credentialBytes);
 
 				const mdocStructure = {
@@ -977,7 +971,7 @@ export function useOpenID4VP({
 
 				selectedVCs.push(encodedDeviceResponse);
 				generatedVPs.push(encodedDeviceResponse);
-				originalVCs.push(vcEntity);
+				originalVCs.push(credential);
 			}
 		}
 
@@ -1247,7 +1241,7 @@ export function useOpenID4VP({
 			}, 'error');
 			return {};
 		}
-	}, [httpProxy, openID4VPRelyingPartyStateRepository, storeVerifiablePresentation, showStatusPopup]);
+	}, [httpProxy, openID4VPRelyingPartyStateRepository, storeVerifiablePresentation, showStatusPopup, getCalculatedWalletState]);
 
 	return useMemo(() => {
 		return {
