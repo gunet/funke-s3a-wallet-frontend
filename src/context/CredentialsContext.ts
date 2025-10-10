@@ -32,7 +32,7 @@ export type CredentialsContextValue = {
 	getData: (shouldPoll?: boolean) => Promise<void>;
 	currentSlide: number;
 	setCurrentSlide: (slide: number) => void;
-	parseCredential: (vcEntity: WalletStateCredential) => Promise<ParsedCredential | null>;
+	parseCredential: (credential: WalletStateCredential) => Promise<ParsedCredential | null>;
 	credentialEngine: CredentialEngine | null;
 	pendingTransactions:Record<string, any>;
 };
