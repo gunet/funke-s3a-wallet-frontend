@@ -16,7 +16,7 @@ import { byteArrayEquals, compareBy, toBase64Url } from '../../util';
 import { withAuthenticatorAttachmentFromHints } from '@/util-webauthn';
 import { formatDate } from '../../functions/DateFormat';
 import type { PrecreatedPublicKeyCredential, WebauthnPrfEncryptionKeyInfo, WebauthnSignArkgPublicSeed, WebauthnSignSplitBbsKeypair } from '../../services/keystore';
-import { isPrfKeyV2, serializePrivateData } from '../../services/keystore';
+import { isPrfKeyV2, parseWebauthnSignGeneratedKey, serializePrivateData } from '../../services/keystore';
 
 import Button from '../../components/Buttons/Button';
 import DeletePopup from '../../components/Popups/DeletePopup';
@@ -952,19 +952,20 @@ const Settings = () => {
 	const onRegisterWebauthnSigningKey = async (alg: number) => {
 		try {
 			setRegisterWebauthnSigningKeyInProgress(true);
+			const webauthnDialog = webauthnInteractionCtx.setup({ heading: t('registerHardwareKey.heading') });
 
-			async function webauthnRegisterRetryLoop(
-				heading: React.ReactNode,
-				options: CredentialCreationOptions,
-			): Promise<{ credential: PublicKeyCredential, name: string }> {
-				const webauthnDialog = webauthnInteractionCtx.setup({ heading });
-
-				let retry = true;
-				while (retry) {
-					try {
+			let retry = true;
+			while (retry) {
+				try {
+					const [newKeypair, newPrivateData, keystoreCommit] = await keystore.registerWebauthnSignKeypair(alg, async options => {
 						const credential = await webauthnDialog.beginCreate(options, {
 							bodyText: t('registerHardwareKey.intro'),
 						});
+						const generatedKey = parseWebauthnSignGeneratedKey(credential);
+						if (!generatedKey) {
+							throw new Error('Key not found', { cause: { id: 'key-not-found' } });
+						}
+
 						const name = await webauthnDialog.input({
 							bodyText: t('registerHardwareKey.successGiveName'),
 							input: {
@@ -973,50 +974,50 @@ const Settings = () => {
 								placeholder: t('registerHardwareKey.nicknamePlaceholder'),
 							},
 						});
+
+						return { credential, name };
+					});
+
+					if (newKeypair) {
+						await api.updatePrivateData(newPrivateData);
+						await keystoreCommit();
 						webauthnDialog.success({
 							bodyText: t('registerHardwareKey.success'),
 						});
-						return { credential, name };
+					} else {
+						throw new Error('Key not found', { cause: { id: 'key-not-found' } });
+					}
 
-					} catch (e) {
-						switch (e.cause?.id) {
-							case 'key-not-found': {
-								const result = await webauthnDialog.error({
-									bodyText: t('registerHardwareKey.errorKeyNotFound'),
-									buttons: {
-										retry: true,
-									},
-								});
-								retry = result.retry;
-							}
+				} catch (e) {
+					switch (e.cause?.id) {
+						case 'key-not-found': {
+							const result = await webauthnDialog.error({
+								bodyText: t('registerHardwareKey.errorKeyNotFound'),
+								buttons: {
+									retry: true,
+								},
+							});
+							retry = result.retry;
+							break;
+						}
 
-							case 'user-abort':
-								throw e;
+						case 'user-abort':
+							throw e;
 
-							case 'err':
-							default: {
-								const result = await webauthnDialog.error({
-									bodyText: t('registerHardwareKey.errorUnknown'),
-									buttons: {
-										retry: true,
-									},
-								});
-								retry = result.retry;
-								break;
-							}
+						case 'err':
+						default: {
+							const result = await webauthnDialog.error({
+								bodyText: t('registerHardwareKey.errorUnknown'),
+								buttons: {
+									retry: true,
+								},
+							});
+							retry = result.retry;
+							break;
 						}
 					}
 				}
 			}
-
-			const [newKeypair, newPrivateData, keystoreCommit] = await keystore.registerWebauthnSignKeypair(alg, async options => {
-				return await webauthnRegisterRetryLoop(t('registerHardwareKey.heading'), options);
-			});
-			if (newKeypair) {
-				await api.updatePrivateData(newPrivateData);
-				await keystoreCommit();
-			}
-
 		} finally {
 			setRegisterWebauthnSigningKeyInProgress(false);
 		}
